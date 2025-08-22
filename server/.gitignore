@@ -1,18 +1,35 @@
+# Dependencies
+node_modules/
+
 # Environment variables
 .env
 
-# Node modules
-node_modules/
+# Uploaded files
+uploads/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
 # Logs
 *.log
 npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
 # Coverage directory used by tools like istanbul
 coverage/
 
 # nyc test coverage
 .nyc_output
+
+# Dependency directories
+jspm_packages/
 
 # Optional npm cache directory
 .npm
@@ -25,3 +42,9 @@ coverage/
 
 # Yarn Integrity file
 .yarn-integrity
+
+# dotenv environment variables file
+.env
+
+# next.js build output
+.next
