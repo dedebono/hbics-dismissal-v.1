@@ -1,4 +1,4 @@
-# Web-App Penjemput V.04.2.beta
+# Dismissal App v.1 - admin, teacher, student page.
 
 A comprehensive student dismissal management system with barcode scanning, real-time tracking, and role-based access control for efficient student pickup management.
 
