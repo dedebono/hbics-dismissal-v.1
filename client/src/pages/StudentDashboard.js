@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { studentsAPI, dismissalAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import './StudentDashboard.css';
+import moment from 'moment-timezone';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
@@ -10,8 +11,12 @@ const StudentDashboard = () => {
   const [activeStudents, setActiveStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const barcodeInputRef = useRef(null);
+  const [currentTime, setCurrentTime] = useState(moment().format('HH:mm:ss')); // Initial time
 
   useEffect(() => {
+    setInterval(() => {
+      setCurrentTime(moment().format('HH:mm:ss'));
+    }, 1000);
     console.log('StudentDashboard useEffect - setting up active students polling');
     fetchActiveStudents();
     const interval = setInterval(fetchActiveStudents, 5000);
@@ -20,6 +25,12 @@ const StudentDashboard = () => {
       clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+  if (barcodeInputRef.current) {
+    barcodeInputRef.current.focus();
+  }
+  }, [barcode]);  // Only trigger on barcode changes
 
   const fetchActiveStudents = async () => {
     console.log('Fetching active students...');
@@ -59,15 +70,14 @@ const handleBarcodeSubmit = async (e) => {
 
   setLoading(true);
   try {
-    // Check if the student is already checked in
     const activeStudent = activeStudents.find(student => student.barcode === barcode);
 
     if (activeStudent) {
-      // If the student is already checked in
-      toast.error('Student is already checked in.');
+    toast.error(`${activeStudent.name} is already checked in.`);
     } else {
-      // If the student is not checked in, proceed with check-in
-      const response = await dismissalAPI.checkIn(barcode);
+
+      const localTime = new Date().toLocaleString();
+      const response = await dismissalAPI.checkIn(barcode, { localTime });
       toast.success(`Checked in: ${response.data.student.name}`);
       fetchActiveStudents(); // Update the list of active students after check-in
     }
@@ -75,6 +85,7 @@ const handleBarcodeSubmit = async (e) => {
     setBarcode(''); // Reset the barcode input
   } catch (error) {
     toast.error(error.response?.data?.message || 'Error processing barcode');
+    setBarcode(''); 
   } finally {
     setLoading(false);
     barcodeInputRef.current?.focus(); // Focus back on the barcode input
@@ -87,7 +98,7 @@ const handleBarcodeSubmit = async (e) => {
 
         {/* Barcode Scanner Section */}
         <div className="scanner-section">
-          <h2>Student Check-in/Check-out</h2>
+          <h2>Student Check-in ({currentTime})</h2>
           <form onSubmit={handleBarcodeSubmit} className="scanner-form">
             <div className="form-group">
               <input
@@ -97,7 +108,7 @@ const handleBarcodeSubmit = async (e) => {
                 onChange={(e) => setBarcode(e.target.value)}
                 placeholder="Scan or enter barcode"
                 disabled={loading}
-                autoFocus
+                autoFocus={true}
                 className="barcode-input"
               />
             </div>
@@ -141,9 +152,8 @@ const handleBarcodeSubmit = async (e) => {
                     <h3>{student.name}</h3>
                     <p className="student-class">{student.class}</p>
                     <p className="student-time">
-                      Checked in: {new Date(student.checked_in_at).toLocaleTimeString()}
-                    </p>
-                  </div>
+                      Checked in: {moment.utc(student.checked_in_at).tz('Asia/Singapore').format('hh:mm A')}
+                    </p>                  </div>
                 </div>
               ))}
             </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './DismissalLogs.css';
+import moment from 'moment-timezone';
 
 const DismissalLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -87,7 +88,7 @@ const fetchLogs = async () => {
       const [year, month] = selectedMonth.split('-').map(Number);
       filtered = filtered.filter(log => {
         const logDate = new Date(log.timestamp);
-        return logDate.getFullYear() === year && logDate.getMonth() === month - 1;
+        return logDate.getMonth() === month - 1;
       });
     }
 
@@ -117,55 +118,7 @@ const fetchLogs = async () => {
     fetchLogs();
   };
 
-  const exportToCSV = () => {
-    if (filteredLogs.length === 0) {
-      alert('No data to export');
-      return;
-    }
-
-    const headers = ['ID', 'Student Name', 'Class', 'Barcode', 'Action', 'Timestamp'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredLogs.map(log => [
-        log.id,
-        `"${log.name}"`,
-        `"${log.class}"`,
-        log.barcode,
-        log.action,
-        `"${new Date(log.timestamp).toLocaleString()}"`
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `dismissal-logs-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportToJSON = () => {
-    if (filteredLogs.length === 0) {
-      alert('No data to export');
-      return;
-    }
-
-    const jsonContent = JSON.stringify(filteredLogs, null, 2);
-    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `dismissal-logs-${new Date().toISOString().split('T')[0]}.json`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const getActionColor = (action) => {
+    const getActionColor = (action) => {
     switch (action) {
       case 'check_in':
         return 'action-checkin';
@@ -175,6 +128,59 @@ const fetchLogs = async () => {
         return 'action-default';
     }
   };
+
+const exportToCSV = () => {
+  if (filteredLogs.length === 0) {
+    alert('No data to export');
+    return;
+  }
+
+  const headers = ['ID', 'Student Name', 'Class', 'Barcode', 'Action', 'Timestamp'];
+  const csvContent = [
+    headers.join(','),
+    ...filteredLogs.map(log => [
+      log.id,
+      `"${log.name}"`,
+      `"${log.class}"`,
+      log.barcode,
+      log.action,
+      `"${moment.utc(log.timestamp).tz('Asia/Singapore').format('YYYY-MM-DD HH:mm:ss')}"` // Convert to Singapore Time
+    ].join(','))
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `dismissal-logs-${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const exportToJSON = () => {
+  if (filteredLogs.length === 0) {
+    alert('No data to export');
+    return;
+  }
+
+  const updatedLogs = filteredLogs.map(log => ({
+    ...log,
+    timestamp: moment.utc(log.timestamp).tz('Asia/Singapore').format('YYYY-MM-DD HH:mm:ss') // Convert to Singapore Time
+  }));
+
+  const jsonContent = JSON.stringify(updatedLogs, null, 2);
+  const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `dismissal-logs-${new Date().toISOString().split('T')[0]}.json`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   const getActionLabel = (action) => {
     switch (action) {
@@ -211,7 +217,7 @@ const fetchLogs = async () => {
           <button onClick={handleRefresh} className="refresh-btn">
             Refresh
           </button>
-          <button onClick={exportToCSV} className="refresh-btn">
+          <button onClick={exportToCSV} className="export-btn">
             Export CSV
           </button>
           <button onClick={exportToJSON} className="refresh-btn">
@@ -267,18 +273,18 @@ const fetchLogs = async () => {
             className="filter-select"
           >
             <option value="">All Months</option>
-            <option value="2024-01">January 2024</option>
-            <option value="2024-02">February 2024</option>
-            <option value="2024-03">March 2024</option>
-            <option value="2024-04">April 2024</option>
-            <option value="2024-05">May 2024</option>
-            <option value="2024-06">June 2024</option>
-            <option value="2024-07">July 2024</option>
-            <option value="2024-08">August 2024</option>
-            <option value="2024-09">September 2024</option>
-            <option value="2024-10">October 2024</option>
-            <option value="2024-11">November 2024</option>
-            <option value="2024-12">December 2024</option>
+            <option value="2024-01">January</option>
+            <option value="2024-02">February</option>
+            <option value="2024-03">March</option>
+            <option value="2024-04">April</option>
+            <option value="2024-05">May</option>
+            <option value="2024-06">June</option>
+            <option value="2024-07">July</option>
+            <option value="2024-08">August</option>
+            <option value="2024-09">September</option>
+            <option value="2024-10">October</option>
+            <option value="2024-11">November</option>
+            <option value="2024-12">December</option>
           </select>
         </div>
 
@@ -356,7 +362,7 @@ const fetchLogs = async () => {
                     {getActionLabel(log.action)}
                   </span>
                 </td>
-                <td>{new Date(log.timestamp).toLocaleString()}</td>
+                <td>{new Date(log.timestamp).toLocaleString('en-SG', { timeZone: 'Asia/Singapore' })}</td>
               </tr>
             ))}
           </tbody>

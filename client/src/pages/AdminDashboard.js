@@ -4,6 +4,7 @@ import { studentsAPI, dismissalAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import DismissalLogs from './DismissalLogs'; // Import DismissalLogs component
 import './AdminDashboard.css';
+import moment from 'moment-timezone';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -16,6 +17,7 @@ const AdminDashboard = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCSVModal, setShowCSVModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     barcode: '',
     name: '',
@@ -44,6 +46,18 @@ const AdminDashboard = () => {
       toast.error('Error fetching students');
     }
   };
+
+  const handleSearchChange = (e) => {
+  setSearchTerm(e.target.value);
+  };
+
+  const filteredStudents = students.filter((student) => {
+    return (
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.class.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
   
   const fetchActiveStudents = async () => {
     try {
@@ -231,7 +245,7 @@ const AdminDashboard = () => {
     }
   };
 
- const renderStudentsTab = () => (
+const renderStudentsTab = () => (
     <div className="tab-content">
       <div className="tab-header">
         <h2>Student Management</h2>
@@ -243,6 +257,16 @@ const AdminDashboard = () => {
             Upload CSV
           </button>
         </div>
+      </div>
+      {/* Search Bar */}
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Search by name or class..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          className="search-input"
+        />
       </div>
       <div className="students-table">
         <table>
@@ -256,7 +280,7 @@ const AdminDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {students.map((student) => (
+            {filteredStudents.map((student) => (
               <tr key={student.id}>
                 <td>
                   {student.photo_url ? (
@@ -295,7 +319,7 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
-
+  
  const renderActiveStudentsTab = () => (
     <div className="tab-content">
       <div className="tab-header">
@@ -329,16 +353,15 @@ const AdminDashboard = () => {
               <div className="student-info">
                 <h3>{student.name}</h3>
                 <p className="student-class">{student.class}</p>
-                <p className="student-time">Checked in: {new Date(student.checked_in_at).toLocaleTimeString()}</p>
-              </div>
+                <p className="student-time">
+                  Checked in: {moment.utc(student.checked_in_at).tz('Asia/Singapore').format('hh:mm A')}
+                </p>              </div>
             </div>
           ))}
         </div>
       )}
     </div>
   );
-
-
 
   const renderStatsTab = () => (
     <div className="tab-content">
@@ -371,7 +394,7 @@ const AdminDashboard = () => {
     </div>
   );
 
-  return (
+ return (
     <div className="admin-dashboard">
       <header className="admin-header">
         <div className="header-content">
@@ -431,7 +454,7 @@ const AdminDashboard = () => {
       <footer className="admin-footer">
         <p>HBICS Dismissal System v1.0 | &copy; 2025</p>
       </footer>
-
+    
       {/* Add Student Modal */}
       {showAddModal && (
         <div className="modal-overlay">

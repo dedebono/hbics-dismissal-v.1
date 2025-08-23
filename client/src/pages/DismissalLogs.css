@@ -30,11 +30,24 @@
   border-radius: 5px;
   cursor: pointer;
   font-size: 16px;
+  margin: 5px;
   transition: background-color 0.3s;
 }
 
 .refresh-btn:hover {
   background-color: #2980b9;
+}
+
+.export-btn {
+  background-color: #04ac01;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 5px;
+  transition: background-color 0.3s;
 }
 
 .filters-section {

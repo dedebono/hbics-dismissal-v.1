@@ -7,8 +7,8 @@
 
 .student-main {
   flex: 1;
-  padding: 2rem;
-  max-width: 1200px;
+  padding: 1rem;
+  max-width: 1500px;
   margin: 0 auto;
   width: 100%;
 }
@@ -51,8 +51,10 @@
   padding: 12px;
   border: 2px solid #ddd;
   border-radius: 8px;
+  height: 3rem;
   font-size: 1.1rem;
   min-width: 300px;
+  margin: 18px 0 0 0;
   transition: border-color 0.3s ease;
 }
 
@@ -66,7 +68,9 @@
   padding: 12px 24px;
   font-size: 1.1rem;
   min-width: 120px;
+  height: 3rem;
 }
+
 
 .active-students-section {
   background: white;
@@ -104,14 +108,14 @@
 
 .student-card {
   background: #f8f9fa;
-  padding: 1.5rem;
+  padding: 0.5rem;
   border-radius: 10px;
-  border-left: 4px solid #f7b917;
   transition: transform 0.2s ease;
   display: flex;
-  flex-direction: column;
+  flex-direction:row;
   align-items: center;
   text-align: center;
+  border-bottom:#f7b917 solid 2px;
 }
 
 .student-card:hover {
@@ -119,26 +123,23 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.student-photo-container {
-  margin-bottom: 1rem;
+.student-photo-container {  
+  margin-bottom: 0rem;
 }
 
 .student-info h3 {
   color: #143258;
-  margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .student-class {
   color: #666;
-  margin: 0 0 0.5rem 0;
   font-weight: 500;
 }
 
 .student-time {
   color: #888;
   font-size: 0.9rem;
-  margin: 0;
 }
 
 .student-footer {

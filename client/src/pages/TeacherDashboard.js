@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { studentsAPI, dismissalAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import './TeacherDashboard.css';
+import moment from 'moment-timezone';
 
 const TeacherDashboard = () => {
   const { user, logout } = useAuth();
@@ -26,6 +27,12 @@ const TeacherDashboard = () => {
       clearInterval(interval);
     };
   }, []);
+
+    useEffect(() => {
+    if (barcodeInputRef.current) {
+      barcodeInputRef.current.focus();
+    }
+    }, [barcode]);  // Only trigger on barcode changes
 
   const fetchActiveStudents = async () => {
     console.log('Fetching active students...');
@@ -78,8 +85,10 @@ const handleBarcodeSubmit = async (e) => {
       // If the student is not checked in, show an error
       toast.error('Student not checked in yet.');
     }
+     setBarcode(''); 
   } catch (error) {
     toast.error(error.response?.data?.message || 'Error processing checkout');
+     setBarcode(''); 
   } finally {
     setLoading(false);
     barcodeInputRef.current?.focus(); // Focus back on the barcode input
@@ -168,7 +177,7 @@ const handleBarcodeSubmit = async (e) => {
       <main className="teacher-main">
         {/* Barcode Scanner Section */}
         <div className="scanner-section">
-          <h2>Student Check-in/Check-out</h2>
+          <h2>Student Check-out</h2>
           <form onSubmit={handleBarcodeSubmit} className="scanner-form">
             <div className="form-group">
               <input
@@ -311,10 +320,9 @@ const handleBarcodeSubmit = async (e) => {
                   <div className="student-info">
                     <h3>{student.name}</h3>
                     <p className="student-class">{student.class}</p>
-                    <p className="student-time">
-                      Checked in: {new Date(student.checked_in_at).toLocaleTimeString()}
-                    </p>
-                  </div>
+                  <p className="student-time">
+                    Checked in: {moment.utc(student.checked_in_at).tz('Asia/Singapore').format('hh:mm A')}
+                  </p>                  </div>
                 </div>
               ))}
             </div>
