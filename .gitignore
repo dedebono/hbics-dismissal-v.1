@@ -1,8 +1,6 @@
 # Environment variables
 .env
 
-# Node modules
-node_modules/
 
 # Logs
 *.log
@@ -25,3 +23,4 @@ coverage/
 
 # Yarn Integrity file
 .yarn-integrity
+node_modules
