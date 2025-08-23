@@ -185,6 +185,43 @@ class DismissalAnalytics {
     
     db.all(sql, params, callback);
   }
+
+  // Get logs by period (month and/or year)
+  static getLogsByPeriod(filters, callback) {
+    let sql = `
+      SELECT dl.*, s.name, s.class, s.barcode, u.username as performed_by
+      FROM dismissal_logs dl 
+      INNER JOIN students s ON dl.student_id = s.id
+      LEFT JOIN users u ON dl.user_id = u.id
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    if (filters.year) {
+      sql += ` AND strftime('%Y', dl.timestamp) = ?`;
+      params.push(filters.year.toString());
+    }
+    
+    if (filters.month) {
+      sql += ` AND strftime('%m', dl.timestamp) = ?`;
+      params.push(filters.month.toString().padStart(2, '0'));
+    }
+    
+    sql += ` ORDER BY dl.timestamp DESC`;
+    
+    if (filters.limit) {
+      sql += ` LIMIT ?`;
+      params.push(filters.limit);
+    }
+    
+    if (filters.offset) {
+      sql += ` OFFSET ?`;
+      params.push(filters.offset);
+    }
+    
+    db.all(sql, params, callback);
+  }
 }
 
 module.exports = DismissalAnalytics;

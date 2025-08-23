@@ -127,10 +127,10 @@ router.post('/create-user', authenticateToken, requireAdmin, (req, res) => {
   }
 
   // Validate role
-  const validRoles = ['admin', 'teacher'];
+  const validRoles = ['admin', 'teacher', 'student'];
   if (!validRoles.includes(role)) {
     return res.status(400).json({ 
-      message: 'Invalid role. Must be either "admin" or "teacher"' 
+      message: 'Invalid role. Must be either "admin" or "teacher" or "student"' 
     });
   }
 

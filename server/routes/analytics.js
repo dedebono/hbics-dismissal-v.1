@@ -113,4 +113,31 @@ router.get('/export-logs', authenticateToken, requireTeacherOrAdmin, (req, res) 
   });
 });
 
+// Get logs by period (month and/or year)
+router.get('/logs-by-period', authenticateToken, requireTeacherOrAdmin, (req, res) => {
+  const filters = {
+    year: req.query.year ? parseInt(req.query.year) : null,
+    month: req.query.month ? parseInt(req.query.month) : null,
+    limit: parseInt(req.query.limit) || 100,
+    offset: parseInt(req.query.offset) || 0
+  };
+
+  // Validate year if provided
+  if (filters.year && (filters.year < 2000 || filters.year > 2100)) {
+    return res.status(400).json({ message: 'Invalid year. Must be between 2000 and 2100' });
+  }
+
+  // Validate month if provided
+  if (filters.month && (filters.month < 1 || filters.month > 12)) {
+    return res.status(400).json({ message: 'Invalid month. Must be between 1 and 12' });
+  }
+
+  DismissalAnalytics.getLogsByPeriod(filters, (err, logs) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error fetching logs by period' });
+    }
+    res.json(logs);
+  });
+});
+
 module.exports = router;

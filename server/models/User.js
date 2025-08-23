@@ -5,10 +5,16 @@ class User {
   // Create a new user
   static create(userData, callback) {
     const { username, password, role = 'teacher' } = userData;
-    
+
+    // Validate role
+    const validRoles = ['teacher', 'student'];
+    if (!validRoles.includes(role)) {
+      return callback(new Error('Invalid role'));
+    }
+
     bcrypt.hash(password, 10, (err, hashedPassword) => {
       if (err) return callback(err);
-      
+
       const sql = `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`;
       db.run(sql, [username, hashedPassword, role], function(err) {
         if (err) return callback(err);
@@ -54,6 +60,11 @@ class User {
 
   // Update user role
   static updateRole(userId, newRole, callback) {
+    const validRoles = ['teacher', 'student'];
+    if (!validRoles.includes(newRole)) {
+      return callback(new Error('Invalid role'));
+    }
+
     const sql = `UPDATE users SET role = ? WHERE id = ?`;
     db.run(sql, [newRole, userId], function(err) {
       if (err) return callback(err);

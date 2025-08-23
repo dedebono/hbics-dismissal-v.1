@@ -32,24 +32,28 @@ const Login = () => {
     console.log('Calling login function...');
     const result = await login(username, password);
     console.log('Login result:', result);
-    
+
     if (result.success) {
       toast.success('Login successful!');
       // Redirect based on role
       const userRole = JSON.parse(atob(localStorage.getItem('token').split('.')[1])).role;
       console.log('User role:', userRole);
+
       if (userRole === 'admin') {
         console.log('Redirecting to admin dashboard');
         navigate('/admin');
-      } else {
+      } else if (userRole === 'teacher') {
         console.log('Redirecting to teacher dashboard');
         navigate('/teacher');
+      } else if (userRole === 'student') {
+        console.log('Redirecting to student dashboard');
+        navigate('/');
       }
     } else {
       console.log('Login failed:', result.message);
       toast.error(result.message);
     }
-    
+
     setLoading(false);
     console.log('Loading set to false');
   };
@@ -84,13 +88,14 @@ const Login = () => {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
-        
+
         <div className="demo-credentials">
           <p><strong>Demo Credentials:</strong></p>
           <p>Admin: admin / admin123</p>
           <p>Teacher: teacher / teacher123</p>
+          <p>Student: student / student123</p> {/* Added student demo credentials */}
         </div>
-        
+
         <div className="logo">
           <img src="/logohbics.png" alt="HBICS Logo" />
           <div className="credits">

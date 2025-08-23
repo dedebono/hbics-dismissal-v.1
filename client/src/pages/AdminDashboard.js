@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { studentsAPI, dismissalAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import DismissalLogs from './DismissalLogs'; // Import DismissalLogs component
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -9,6 +10,7 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('students');
   const [students, setStudents] = useState([]);
   const [activeStudents, setActiveStudents] = useState([]);
+  const [dismissalLogs, setDismissalLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -24,13 +26,15 @@ const AdminDashboard = () => {
   const [photoFile, setPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  useEffect(() => {
+ useEffect(() => {
     if (activeTab === 'students') {
       fetchStudents();
     } else if (activeTab === 'active') {
       fetchActiveStudents();
+    } else if (activeTab === 'dismissalLogs') {
+      fetchDismissalLogs();
     }
-  }, [activeTab, students]); // Add students as dependency
+  }, [activeTab]);
 
   const fetchStudents = async () => {
     try {
@@ -40,18 +44,16 @@ const AdminDashboard = () => {
       toast.error('Error fetching students');
     }
   };
-
+  
   const fetchActiveStudents = async () => {
     try {
       const [activeResponse, studentsResponse] = await Promise.all([
         dismissalAPI.getActive(),
         studentsAPI.getAll()
       ]);
-      
-      // Enrich active students data with photo URLs from students data
       const enrichedActiveStudents = activeResponse.data.map(activeStudent => {
-        const fullStudentData = studentsResponse.data.find(student => 
-          student.barcode === activeStudent.barcode || 
+        const fullStudentData = studentsResponse.data.find(student =>
+          student.barcode === activeStudent.barcode ||
           student.name === activeStudent.name
         );
         return {
@@ -62,6 +64,15 @@ const AdminDashboard = () => {
       setActiveStudents(enrichedActiveStudents);
     } catch (error) {
       toast.error('Error fetching active students');
+    }
+  };
+
+ const fetchDismissalLogs = async () => {
+    try {
+      const response = await dismissalAPI.getLogs();
+      setDismissalLogs(response.data);
+    } catch (error) {
+      toast.error('Error fetching dismissal logs');
     }
   };
 
@@ -220,7 +231,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const renderStudentsTab = () => (
+ const renderStudentsTab = () => (
     <div className="tab-content">
       <div className="tab-header">
         <h2>Student Management</h2>
@@ -233,7 +244,6 @@ const AdminDashboard = () => {
           </button>
         </div>
       </div>
-      
       <div className="students-table">
         <table>
           <thead>
@@ -250,8 +260,8 @@ const AdminDashboard = () => {
               <tr key={student.id}>
                 <td>
                   {student.photo_url ? (
-                    <img 
-                      src={student.photo_url} 
+                    <img
+                      src={student.photo_url}
                       alt={student.name}
                       className="student-photo"
                       onError={(e) => {
@@ -266,25 +276,15 @@ const AdminDashboard = () => {
                 <td>{student.name}</td>
                 <td>{student.class}</td>
                 <td>
-                  <button 
-                    onClick={() => handleEditStudent(student)} 
-                    className="btn btn-secondary btn-sm"
-                  >
+                  <button onClick={() => handleEditStudent(student)} className="btn btn-secondary btn-sm">
                     Edit
                   </button>
                   {student.photo_url && (
-                    <button 
-                      onClick={() => handleDeletePhoto(student)} 
-                      className="btn btn-warning btn-sm"
-                    >
+                    <button onClick={() => handleDeletePhoto(student)} className="btn btn-warning btn-sm">
                       Delete Photo
                     </button>
                   )}
-                  <button 
-                    onClick={() => handleDeleteStudent(student)} 
-                    className="btn btn-danger btn-sm"
-                    style={{ marginLeft: '5px' }}
-                  >
+                  <button onClick={() => handleDeleteStudent(student)} className="btn btn-danger btn-sm" style={{ marginLeft: '5px' }}>
                     Delete
                   </button>
                 </td>
@@ -296,7 +296,7 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderActiveStudentsTab = () => (
+ const renderActiveStudentsTab = () => (
     <div className="tab-content">
       <div className="tab-header">
         <h2>Active Students ({activeStudents.length})</h2>
@@ -306,7 +306,6 @@ const AdminDashboard = () => {
           </button>
         )}
       </div>
-
       {activeStudents.length === 0 ? (
         <div className="empty-state">
           <p>No active students</p>
@@ -317,8 +316,8 @@ const AdminDashboard = () => {
             <div key={index} className="student-card">
               {student.photo_url && (
                 <div className="student-photo-container">
-                  <img 
-                    src={student.photo_url} 
+                  <img
+                    src={student.photo_url}
                     alt={student.name}
                     className="student-photo"
                     onError={(e) => {
@@ -330,9 +329,7 @@ const AdminDashboard = () => {
               <div className="student-info">
                 <h3>{student.name}</h3>
                 <p className="student-class">{student.class}</p>
-                <p className="student-time">
-                  Checked in: {new Date(student.checked_in_at).toLocaleTimeString()}
-                </p>
+                <p className="student-time">Checked in: {new Date(student.checked_in_at).toLocaleTimeString()}</p>
               </div>
             </div>
           ))}
@@ -340,6 +337,8 @@ const AdminDashboard = () => {
       )}
     </div>
   );
+
+
 
   const renderStatsTab = () => (
     <div className="tab-content">
@@ -401,6 +400,12 @@ const AdminDashboard = () => {
             Active Students
           </button>
           <button 
+            className={activeTab === 'dismissalLogs' ? 'nav-tab active' : 'nav-tab'}
+            onClick={() => setActiveTab('dismissalLogs')}
+          >
+            Dismissal Logs
+          </button>
+          <button 
             className={activeTab === 'stats' ? 'nav-tab active' : 'nav-tab'}
             onClick={() => setActiveTab('stats')}
           >
@@ -420,6 +425,7 @@ const AdminDashboard = () => {
         {activeTab === 'active' && renderActiveStudentsTab()}
         {activeTab === 'stats' && renderStatsTab()}
         {activeTab === 'users' && renderUsersTab()}
+        {activeTab === 'dismissalLogs' && <DismissalLogs />} {/* Render DismissalLogs component */}
       </main>
 
       <footer className="admin-footer">

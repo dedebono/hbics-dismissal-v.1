@@ -54,39 +54,37 @@ const TeacherDashboard = () => {
     }
   };
 
-  const handleBarcodeSubmit = async (e) => {
-    e.preventDefault();
-    console.log('Barcode submitted:', barcode);
-    if (!barcode.trim()) {
-      console.log('Empty barcode, returning');
-      return;
-    }
+const handleBarcodeSubmit = async (e) => {
+  e.preventDefault();
+  console.log('Barcode submitted for checkout:', barcode);
+  
+  if (!barcode.trim()) {
+    console.log('Empty barcode, returning');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const response = await dismissalAPI.checkIn(barcode);
-      toast.success(`Checked in: ${response.data.student.name}`);
+  setLoading(true);
+  try {
+    // Check if the student is already checked in
+    const activeStudent = activeStudents.find(student => student.barcode === barcode);
+
+    if (activeStudent) {
+      // If the student is checked in, proceed with check-out
+      const response = await dismissalAPI.checkOut(barcode);
+      toast.success(`Checked out: ${response.data.student.name}`);
       setBarcode('');
-      fetchActiveStudents();
-    } catch (error) {
-      if (error.response?.status === 400 && error.response?.data?.message === 'Student is already checked in') {
-        // Try to check out instead
-        try {
-          const response = await dismissalAPI.checkOut(barcode);
-          toast.success(`Checked out: ${response.data.student.name}`);
-          setBarcode('');
-          fetchActiveStudents();
-        } catch (checkOutError) {
-          toast.error(checkOutError.response?.data?.message || 'Error processing barcode');
-        }
-      } else {
-        toast.error(error.response?.data?.message || 'Error processing barcode');
-      }
-    } finally {
-      setLoading(false);
-      barcodeInputRef.current?.focus();
+      fetchActiveStudents(); // Update the list of active students after check-out
+    } else {
+      // If the student is not checked in, show an error
+      toast.error('Student not checked in yet.');
     }
-  };
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error processing checkout');
+  } finally {
+    setLoading(false);
+    barcodeInputRef.current?.focus(); // Focus back on the barcode input
+  }
+};
 
   const handleClearAll = async () => {
     if (window.confirm('Are you sure you want to clear all active students?')) {

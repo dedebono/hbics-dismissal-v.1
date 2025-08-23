@@ -48,53 +48,42 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleBarcodeSubmit = async (e) => {
-    e.preventDefault();
-    console.log('Barcode submitted:', barcode);
-    if (!barcode.trim()) {
-      console.log('Empty barcode, returning');
-      return;
-    }
+const handleBarcodeSubmit = async (e) => {
+  e.preventDefault();
+  console.log('Barcode submitted:', barcode);
 
-    setLoading(true);
-    try {
+  if (!barcode.trim()) {
+    console.log('Empty barcode, returning');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // Check if the student is already checked in
+    const activeStudent = activeStudents.find(student => student.barcode === barcode);
+
+    if (activeStudent) {
+      // If the student is already checked in
+      toast.error('Student is already checked in.');
+    } else {
+      // If the student is not checked in, proceed with check-in
       const response = await dismissalAPI.checkIn(barcode);
       toast.success(`Checked in: ${response.data.student.name}`);
-      setBarcode('');
-      fetchActiveStudents();
-    } catch (error) {
-      if (error.response?.status === 400 && error.response?.data?.message === 'Student is already checked in') {
-        // Try to check out instead
-        try {
-          const response = await dismissalAPI.checkOut(barcode);
-          toast.success(`Checked out: ${response.data.student.name}`);
-          setBarcode('');
-          fetchActiveStudents();
-        } catch (checkOutError) {
-          toast.error(checkOutError.response?.data?.message || 'Error processing barcode');
-        }
-      } else {
-        toast.error(error.response?.data?.message || 'Error processing barcode');
-      }
-    } finally {
-      setLoading(false);
-      barcodeInputRef.current?.focus();
+      fetchActiveStudents(); // Update the list of active students after check-in
     }
-  };
 
-  const handleLogin = () => {
-    navigate('/login');
-  };
+    setBarcode(''); // Reset the barcode input
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error processing barcode');
+  } finally {
+    setLoading(false);
+    barcodeInputRef.current?.focus(); // Focus back on the barcode input
+  }
+};
 
   return (
     <div className="student-dashboard">
       <main className="student-main">
-        {/* Login Button */}
-        <div className="login-button-container">
-          <button onClick={handleLogin} className="btn btn-primary login-btn">
-            Login
-          </button>
-        </div>
 
         {/* Barcode Scanner Section */}
         <div className="scanner-section">

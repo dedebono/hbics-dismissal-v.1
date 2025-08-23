@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import DismissalLogs from './pages/DismissalLogs';
 import './App.css';
 
 function App() {
@@ -16,23 +17,38 @@ function App() {
     <AuthProvider>
       <div className="App">
         <Routes>
+          {/* Default route for non-logged-in users */}
           <Route path="/" element={<StudentDashboard />} />
+          
+          {/* Login Route */}
           <Route path="/login" element={<Login />} />
+          
+          {/* Protected Routes */}
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
           } />
+          
           <Route path="/admin" element={
-            <ProtectedRoute requireAdmin>
+            <ProtectedRoute requireAdmin={true}>
               <AdminDashboard />
             </ProtectedRoute>
           } />
+          
           <Route path="/teacher" element={
             <ProtectedRoute>
               <TeacherDashboard />
             </ProtectedRoute>
           } />
+          
+          <Route path="/logs" element={
+            <ProtectedRoute requireAdmin={true}>
+              <DismissalLogs />
+            </ProtectedRoute>
+          } />
+          
+          {/* Fallback route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
