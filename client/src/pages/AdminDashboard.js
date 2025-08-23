@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { studentsAPI, dismissalAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -30,7 +31,7 @@ const AdminDashboard = () => {
     } else if (activeTab === 'active') {
       fetchActiveStudents();
     }
-  }, [activeTab, students]); // Add students as dependency
+  }, [activeTab]);
 
   const fetchStudents = async () => {
     try {
@@ -231,6 +232,9 @@ const AdminDashboard = () => {
           <button onClick={() => setShowCSVModal(true)} className="btn btn-secondary">
             Upload CSV
           </button>
+          <Link to="/dismissal-logs" className="btn btn-info">
+            View Dismissal Logs
+          </Link>
         </div>
       </div>
       
