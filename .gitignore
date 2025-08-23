@@ -1,6 +1,10 @@
 # Environment variables
 .env
 
+# Client and Server directories
+client/
+server/
+
 # Node modules
 node_modules/
 
