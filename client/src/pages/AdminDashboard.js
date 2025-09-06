@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { studentsAPI, dismissalAPI } from '../services/api';
+import { studentsAPI, dismissalAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import DismissalLogs from './DismissalLogs'; // Import DismissalLogs component
 import './AdminDashboard.css';
@@ -28,6 +28,17 @@ const AdminDashboard = () => {
   const [photoFile, setPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // User management state
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [userFormData, setUserFormData] = useState({
+    username: '',
+    password: '',
+    role: 'teacher'
+  });
+  const [creatingUser, setCreatingUser] = useState(false);
+
  useEffect(() => {
     if (activeTab === 'students') {
       fetchStudents();
@@ -35,6 +46,8 @@ const AdminDashboard = () => {
       fetchActiveStudents();
     } else if (activeTab === 'dismissalLogs') {
       fetchDismissalLogs();
+    } else if (activeTab === 'users') {
+      fetchUsers();
     }
   }, [activeTab]);
 
@@ -44,6 +57,18 @@ const AdminDashboard = () => {
       setStudents(response.data);
     } catch (error) {
       toast.error('Error fetching students');
+    }
+  };
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await usersAPI.getAll();
+      setUsers(response.data.users || []);
+    } catch (error) {
+      toast.error('Error fetching users');
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -245,6 +270,62 @@ const AdminDashboard = () => {
     }
   };
 
+  // User management functions
+  const handleAddUser = () => {
+    setUserFormData({
+      username: '',
+      password: '',
+      role: 'teacher'
+    });
+    setShowAddUserModal(true);
+  };
+
+  const handleUserFormChange = (e) => {
+    const { name, value } = e.target;
+    setUserFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    if (!userFormData.username || !userFormData.password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setCreatingUser(true);
+    try {
+      await usersAPI.create(userFormData);
+      toast.success('User created successfully');
+      setShowAddUserModal(false);
+      fetchUsers();
+    } catch (error) {
+      if (error.response?.data?.message === 'Username already exists') {
+        toast.error('Username already exists');
+      } else if (error.response?.data?.message === 'Invalid role') {
+        toast.error('Invalid role selected');
+      } else {
+        toast.error('Error creating user');
+      }
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    if (window.confirm(`Are you sure you want to delete user ${user.username}?`)) {
+      try {
+        await usersAPI.delete(user.id);
+        toast.success('User deleted successfully');
+        fetchUsers();
+      } catch (error) {
+        toast.error('Error deleting user');
+      }
+    }
+  };
+
 const renderStudentsTab = () => (
     <div className="tab-content">
       <div className="tab-header">
@@ -389,8 +470,44 @@ const renderStudentsTab = () => (
 
   const renderUsersTab = () => (
     <div className="tab-content">
-      <h2>User Management</h2>
-      <p>User management features coming soon...</p>
+      <div className="tab-header">
+        <h2>User Management</h2>
+        <div className="action-buttons">
+          <button onClick={handleAddUser} className="btn btn-primary">
+            Add User
+          </button>
+        </div>
+      </div>
+      {loadingUsers ? (
+        <div className="loading">Loading users...</div>
+      ) : (
+      <div className="logs-table-container">
+        <table className="logs-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Created At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.username}</td>
+                  <td>{user.role}</td>
+                  <td>{moment(user.created_at).format('YYYY-MM-DD')}</td>
+                  <td>
+                    <button onClick={() => handleDeleteUser(user)} className="btn btn-danger btn-sm">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 
@@ -650,6 +767,64 @@ const renderStudentsTab = () => (
                   disabled={uploading || !csvFile}
                 >
                   {uploading ? 'Uploading...' : 'Upload CSV'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {showAddUserModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h3>Add New User</h3>
+              <button onClick={() => setShowAddUserModal(false)} className="modal-close">
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleCreateUser}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>Username:</label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={userFormData.username}
+                    onChange={handleUserFormChange}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Password:</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={userFormData.password}
+                    onChange={handleUserFormChange}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Role:</label>
+                  <select
+                    name="role"
+                    value={userFormData.role}
+                    onChange={handleUserFormChange}
+                    required
+                  >
+                    <option value="teacher">Teacher</option>
+                    <option value="student">Student</option>
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" onClick={() => setShowAddUserModal(false)} className="btn btn-secondary">
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={creatingUser}>
+                  {creatingUser ? 'Creating...' : 'Add User'}
                 </button>
               </div>
             </form>

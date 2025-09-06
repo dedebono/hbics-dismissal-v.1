@@ -49,4 +49,28 @@ router.get('/:id', authenticateToken, requireAdmin, (req, res) => {
   });
 });
 
+// Delete user by ID (admin only)
+router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.id);
+
+  if (isNaN(userId)) {
+    return res.status(400).json({ message: 'Invalid user ID' });
+  }
+
+  User.delete(userId, (err, result) => {
+    if (err) {
+      return res.status(500).json({ 
+        message: 'Error deleting user',
+        error: err.message 
+      });
+    }
+
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'User deleted successfully' });
+  });
+});
+
 module.exports = router;

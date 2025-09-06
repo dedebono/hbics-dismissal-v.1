@@ -281,7 +281,7 @@ const handleBarcodeSubmit = async (e) => {
               )}
             </h2>
             {activeStudents.length > 0 && (
-              <button onClick={handleClearAll} className="btn btn-danger">
+              <button onClick={handleClearAll} className="btn btn-danger-clear" disabled>
                 Clear All
               </button>
             )}

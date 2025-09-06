@@ -96,6 +96,7 @@ export const studentsAPI = {
     `${API_BASE_URL}/students/photo/${filename}`,
 };
 
+  
 // Dismissal API
 export const dismissalAPI = {
   checkIn: (barcode) => 
@@ -122,5 +123,21 @@ export const dismissalAPI = {
   getStatus: (barcode) => 
     api.get(`/dismissal/status/${barcode}`),
 };
+
+// Users API
+export const usersAPI = {
+  getAll: () => 
+    api.get('/users'),
+  
+  getById: (id) => 
+    api.get(`/users/${id}`),
+  
+  create: (userData) => 
+    api.post('/auth/create-user', userData),
+  
+  delete: (id) => 
+    api.delete(`/users/${id}`),
+};
+
 
 export default api;
