@@ -69,6 +69,18 @@ class Student {
     });
   }
 
+  
+  // Update only sound URL
+  static updateSound(id, sound_url, callback) {
+    const sql = `UPDATE students SET sound_url = ? WHERE id = ?`;
+
+    db.run(sql, [sound_url || null, id], function(err) {
+      if (err) return callback(err);
+      callback(null, { changes: this.changes });
+    });
+  }
+
+
   // Delete student
   static delete(id, callback) {
     const sql = `DELETE FROM students WHERE id = ?`;

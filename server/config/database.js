@@ -32,6 +32,7 @@ const initDatabase = (callback) => {
       name TEXT NOT NULL,
       class TEXT NOT NULL,
       photo_url TEXT,
+      sound_url TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
       if (err) return callback(err);

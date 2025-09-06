@@ -43,6 +43,39 @@ const photoUpload = multer({
   }
 });
 
+// Configure multer for sound uploads
+const soundUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadDir = 'uploads/sounds/';
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const studentId = req.params.id;
+      const extension = path.extname(file.originalname);
+      const filename = `student_${studentId}${extension}`;
+      cb(null, filename);
+    }
+  }),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit for sound files
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /mp3|wav|ogg|m4a|aac/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only sound files (mp3, wav, ogg, m4a, aac) are allowed'));
+    }
+  }
+});
+
 // Get all students
 router.get('/', authenticateToken, (req, res) => {
   Student.getAll((err, students) => {
@@ -285,6 +318,19 @@ router.use('/:id/photo', (err, req, res, next) => {
   next();
 });
 
+// Error handling middleware for sound upload
+router.use('/:id/sound', (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'File too large. Maximum size is 10MB' });
+    }
+    return res.status(400).json({ message: 'File upload error: ' + err.message });
+  } else if (err) {
+    return res.status(400).json({ message: err.message });
+  }
+  next();
+});
+
 // Upload student photo (admin only)
 router.post('/:id/photo', authenticateToken, requireAdmin, photoUpload.single('photo'), (req, res) => {
   const { id } = req.params;
@@ -380,6 +426,105 @@ router.delete('/:id/photo', authenticateToken, requireAdmin, (req, res) => {
       }
 
       res.json({ message: 'Photo deleted successfully' });
+    });
+  });
+});
+
+// Upload student sound (admin only)
+router.post('/:id/sound', authenticateToken, requireAdmin, soundUpload.single('sound'), (req, res) => {
+  const { id } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({ message: 'Sound file is required' });
+  }
+
+  console.log('Sound upload received:', {
+    studentId: id,
+    filename: req.file.filename,
+    originalName: req.file.originalname,
+    size: req.file.size,
+    path: req.file.path
+  });
+
+  // Generate sound URL using BACKEND_URL environment variable or default to localhost
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  const soundUrl = `${backendUrl}/api/students/sound/${req.file.filename}`;
+
+  // Update student with sound URL using the dedicated sound update method
+  Student.updateSound(id, soundUrl, (err, result) => {
+    if (err) {
+      console.error('Database update error:', err);
+      // Delete the uploaded file if database update fails
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(500).json({ message: 'Error updating student sound', error: err.message });
+    }
+
+    if (result.changes === 0) {
+      console.error('Student not found:', id);
+      // Delete the uploaded file if student not found
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    console.log('Sound uploaded successfully for student:', id);
+    res.json({
+      message: 'Sound uploaded successfully',
+      soundUrl: soundUrl,
+      filename: req.file.filename
+    });
+  });
+});
+
+// Serve student sounds
+router.get('/sound/:filename', (req, res) => {
+  const { filename } = req.params;
+  const filePath = path.join(__dirname, '../uploads/sounds', filename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: 'Sound not found' });
+  }
+
+  res.sendFile(filePath);
+});
+
+// Delete student sound (admin only)
+router.delete('/:id/sound', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+
+  // First get the student to find the sound filename
+  Student.findById(id, (err, student) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error fetching student' });
+    }
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    if (!student.sound_url) {
+      return res.status(404).json({ message: 'No sound found for this student' });
+    }
+
+    // Extract filename from sound URL
+    const filename = path.basename(student.sound_url);
+    const filePath = path.join(__dirname, '../uploads/sounds', filename);
+
+    // Delete the file
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Update student to remove sound URL using the dedicated sound update method
+    Student.updateSound(id, null, (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'Error removing sound reference' });
+      }
+
+      res.json({ message: 'Sound deleted successfully' });
     });
   });
 });
