@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext'; // Import useSocket
+import { useSocket } from '../contexts/SocketContext';
 import { studentsAPI, dismissalAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import './TeacherDashboard.css';
@@ -8,36 +8,55 @@ import moment from 'moment-timezone';
 
 const TeacherDashboard = () => {
   const { user, logout } = useAuth();
-  const { socket, isConnected } = useSocket(); // Use the useSocket hook
+  const { socket, isConnected } = useSocket();
+
+  // Barcode and student check-in/out state
   const [barcode, setBarcode] = useState('');
   const [activeStudents, setActiveStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Filter and sort state
   const [filterClass, setFilterClass] = useState('');
   const [filterName, setFilterName] = useState('');
   const [sortField, setSortField] = useState('checked_in_at');
   const [sortDirection, setSortDirection] = useState('desc');
-  const barcodeInputRef = useRef(null);
-  const [currentlyPlaying, setCurrentlyPlaying] = useState(null); // Track playing student barcode
-  const audioRef = useRef(null);
 
-  // Effect hook for WebSocket events and periodic polling
+  // Playback state
+  const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const [playbackState, setPlaybackState] = useState('stopped');
+  const [currentPlayingIndex, setCurrentPlayingIndex] = useState(null);
+  const [isLooping, setIsLooping] = useState(false);
+
+  const barcodeInputRef = useRef(null);
+  const audioRef = useRef(null);
+  const [userHasInteracted, setUserHasInteracted] = useState(false);
+
+  // Handle user interaction to enable sound
+  useEffect(() => {
+    const handleInteraction = () => {
+      setUserHasInteracted(true);
+      window.removeEventListener('click', handleInteraction);
+    };
+    window.addEventListener('click', handleInteraction);
+    return () => window.removeEventListener('click', handleInteraction);
+  }, []);
+
+  // WebSocket events
   useEffect(() => {
     if (socket) {
-      // WebSocket events
       socket.on('student_checked_in', handleStudentCheckedIn);
       socket.on('student_checked_out', handleStudentCheckedOut);
     }
 
-    // Cleanup WebSocket listeners on component unmount
     return () => {
       if (socket) {
         socket.off('student_checked_in', handleStudentCheckedIn);
         socket.off('student_checked_out', handleStudentCheckedOut);
       }
     };
-  }, [socket]);
+  }, [socket, userHasInteracted, currentlyPlaying, playbackState]);
 
-  // Fetch active students once and then poll every 5 seconds
+  // Fetch active students and poll every 5 seconds
   useEffect(() => {
     const fetchActiveStudents = async () => {
       try {
@@ -45,9 +64,7 @@ const TeacherDashboard = () => {
           dismissalAPI.getActive(),
           studentsAPI.getAll(),
         ]);
-        console.log('Active students response:', activeResponse.data);
 
-        // Enrich active students data with photo URLs from students data
         const enrichedActiveStudents = activeResponse.data.map((activeStudent) => {
           const fullStudentData = studentsResponse.data.find(
             (student) =>
@@ -72,24 +89,34 @@ const TeacherDashboard = () => {
     return () => clearInterval(interval); // Cleanup interval on unmount
   }, []);
 
-  // Real-time check-in handling
+  // Real-time student check-in handler
   const handleStudentCheckedIn = (student) => {
     setActiveStudents((prevStudents) => {
       const newActiveStudents = [student, ...prevStudents];
-      if (student.sound_url && currentlyPlaying === student.barcode) {
-        handlePlayPause(student.barcode); // If the student is playing, toggle sound
+      if (playbackState === 'playing' && userHasInteracted && student.sound_url) {
+        handlePlayPause(student.barcode);
+      } else if (student.sound_url && !userHasInteracted) {
+        toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
       }
       return newActiveStudents;
     });
   };
 
-  // Real-time check-out handling
+  // Real-time student check-out handler
   const handleStudentCheckedOut = (barcode) => {
     setActiveStudents((prevStudents) => {
       const updatedStudents = prevStudents.filter((student) => student.barcode !== barcode);
       if (currentlyPlaying === barcode && audioRef.current) {
         audioRef.current.pause(); // Stop audio if currently playing
         setCurrentlyPlaying(null);
+        if (playbackState === 'playing' || playbackState === 'paused') {
+          const newIndex = updatedStudents.findIndex(s => s.barcode === currentlyPlaying);
+          if (newIndex === -1) {
+            stopAllSounds();
+          } else {
+            setCurrentPlayingIndex(newIndex);
+          }
+        }
       }
       return updatedStudents;
     });
@@ -103,19 +130,10 @@ const TeacherDashboard = () => {
     setLoading(true);
     try {
       const activeStudent = activeStudents.find((student) => student.barcode === barcode);
-
       if (activeStudent) {
-        // Proceed with check-out
         const response = await dismissalAPI.checkOut(barcode);
         toast.success(`Checked out: ${response.data.student.name}`);
         setBarcode('');
-        setActiveStudents((prevStudents) =>
-          prevStudents.filter((student) => student.barcode !== barcode)
-        );
-        if (currentlyPlaying === barcode && audioRef.current) {
-          audioRef.current.pause(); // Stop audio on check-out
-          setCurrentlyPlaying(null);
-        }
       } else {
         toast.error('Student not checked in yet.');
       }
@@ -127,8 +145,12 @@ const TeacherDashboard = () => {
     }
   };
 
-  // Play or pause audio
+  // Handle play/pause for a single student
   const handlePlayPause = (studentBarcode) => {
+    if (!userHasInteracted) {
+      toast.error('Click anywhere on the page to enable sound.');
+      return;
+    }
     const student = activeStudents.find((s) => s.barcode === studentBarcode);
     if (!student || !student.sound_url) {
       toast.error('No sound available for this student.');
@@ -136,53 +158,164 @@ const TeacherDashboard = () => {
     }
 
     if (currentlyPlaying === studentBarcode) {
-      audioRef.current?.pause(); // Pause audio
+      audioRef.current?.pause();
       setCurrentlyPlaying(null);
+      setPlaybackState('paused');
     } else {
       if (audioRef.current) {
         audioRef.current.src = student.sound_url;
         const p = audioRef.current.play();
         if (p !== undefined) {
-          p.then(() => setCurrentlyPlaying(studentBarcode))
-           .catch((err) => {
-             console.error('Audio playback failed:', err);
-             toast.error('Could not play audio.');
-             setCurrentlyPlaying(null);
-           });
+          p.then(() => {
+            setCurrentlyPlaying(studentBarcode);
+            setPlaybackState('playing');
+            setCurrentPlayingIndex(filteredAndSortedStudents.findIndex(s => s.barcode === studentBarcode));
+          })
+          .catch((err) => {
+            console.error('Audio playback failed:', err);
+            toast.error('Could not play audio.');
+            setCurrentlyPlaying(null);
+            setPlaybackState('stopped');
+          });
         }
       }
     }
   };
 
-  const handleAudioEnded = () => {
-    setCurrentlyPlaying(null); // Reset playback when audio ends
+  // Handle play all sounds globally
+  const playAllSounds = () => {
+    if (!userHasInteracted) {
+      toast.error('Click anywhere on the page to enable sound.');
+      return;
+    }
+    if (filteredAndSortedStudents.length === 0) {
+      toast.error('No active students to play sounds for.');
+      return;
+    }
+
+    let startIndex = currentPlayingIndex !== null ? currentPlayingIndex : 0;
+    if (playbackState === 'paused' && currentlyPlaying) {
+      const student = filteredAndSortedStudents.find(s => s.barcode === currentlyPlaying);
+      if (student) {
+        audioRef.current.play();
+        setPlaybackState('playing');
+        return;
+      }
+    }
+
+    let studentToPlay = null;
+    for (let i = startIndex; i < filteredAndSortedStudents.length; i++) {
+      if (filteredAndSortedStudents[i].sound_url) {
+        studentToPlay = filteredAndSortedStudents[i];
+        setCurrentPlayingIndex(i);
+        break;
+      }
+    }
+
+    if (studentToPlay) {
+      handlePlayPause(studentToPlay.barcode);
+    } else {
+      toast.error('No students with sound files found.');
+      setPlaybackState('stopped');
+      setCurrentPlayingIndex(null);
+    }
   };
 
-  // Get unique class names from active students
+  // Pause all sounds
+  const pauseAllSounds = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setPlaybackState('paused');
+    }
+  };
+
+  // Stop all sounds
+  const stopAllSounds = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+    }
+    setCurrentlyPlaying(null);
+    setPlaybackState('stopped');
+    setCurrentPlayingIndex(null);
+  };
+
+  // Restart all sounds
+  const restartAllSounds = () => {
+    stopAllSounds();
+    setCurrentPlayingIndex(0);
+    setTimeout(() => {
+      playAllSounds();
+    }, 100);
+  };
+
+  // Toggle loop playback
+  const toggleLoopPlayback = () => {
+    if (isLooping) {
+      setIsLooping(false);
+      toast('Looping stopped.');
+    } else {
+      setIsLooping(true);
+      toast.success('Looping enabled. The list will now loop continuously.');
+      if (playbackState === 'stopped') {
+        restartAllSounds();
+      }
+    }
+  };
+
+  // Handle audio ended and manage loop
+  const handleAudioEnded = () => {
+    setCurrentlyPlaying(null);
+    if (playbackState === 'playing') {
+      let nextIndex = currentPlayingIndex !== null ? currentPlayingIndex + 1 : 0;
+      let studentToPlay = null;
+
+      for (let i = nextIndex; i < filteredAndSortedStudents.length; i++) {
+        if (filteredAndSortedStudents[i].sound_url) {
+          studentToPlay = filteredAndSortedStudents[i];
+          nextIndex = i;
+          break;
+        }
+      }
+
+      if (studentToPlay) {
+        setCurrentPlayingIndex(nextIndex);
+        handlePlayPause(studentToPlay.barcode);
+      } else if (isLooping) {
+        setCurrentPlayingIndex(0);
+        const firstStudentWithSound = filteredAndSortedStudents.find(s => s.sound_url);
+        if (firstStudentWithSound) {
+          handlePlayPause(firstStudentWithSound.barcode);
+        } else {
+          stopAllSounds();
+          toast.success('No students with sound files found to loop.');
+        }
+      } else {
+        stopAllSounds();
+        toast.success('All student sounds played.');
+      }
+    }
+  };
+
+  // Get unique class names for filtering
   const uniqueClasses = useMemo(() => {
     const classes = [...new Set(activeStudents.map((student) => student.class))];
     return classes.sort();
   }, [activeStudents]);
 
-  // Filter and sort students
+  // Filter and sort active students
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = activeStudents;
-
     if (filterClass) {
-      filtered = filtered.filter((student) =>
-        student.class.toLowerCase().includes(filterClass.toLowerCase())
-      );
+      filtered = filtered.filter((student) => student.class.toLowerCase().includes(filterClass.toLowerCase()));
     }
 
     if (filterName) {
-      filtered = filtered.filter((student) =>
-        student.name.toLowerCase().includes(filterName.toLowerCase())
-      );
+      filtered = filtered.filter((student) => student.name.toLowerCase().includes(filterName.toLowerCase()));
     }
 
     filtered.sort((a, b) => {
       let aValue, bValue;
-
       if (sortField === 'checked_in_at') {
         aValue = new Date(a.checked_in_at);
         bValue = new Date(b.checked_in_at);
@@ -199,6 +332,7 @@ const TeacherDashboard = () => {
     return filtered;
   }, [activeStudents, filterClass, filterName, sortField, sortDirection]);
 
+  // Handle clear filters
   const handleClearFilters = () => {
     setFilterClass('');
     setFilterName('');
@@ -206,13 +340,12 @@ const TeacherDashboard = () => {
     setSortDirection('desc');
   };
 
+  // Check if filters are active
   const hasActiveFilters = filterClass || filterName || sortField !== 'checked_in_at' || sortDirection !== 'desc';
 
   return (
     <div className="teacher-dashboard">
-      {/* WebSocket Status Indicator */}
       <div className={`websocket-status ${isConnected ? 'connected' : 'disconnected'}`} />
-
       <header className="teacher-header">
         <div className="header-content">
           <h1>Teacher Dashboard</h1>
@@ -222,7 +355,7 @@ const TeacherDashboard = () => {
           </div>
         </div>
       </header>
-
+      
       <main className="teacher-main">
         {/* Barcode Scanner Section */}
         <div className="scanner-section">
@@ -246,6 +379,26 @@ const TeacherDashboard = () => {
           </form>
         </div>
 
+        {/* Global Playback Controls */}
+        <div className="playback-controls">
+          <h2>Audio Playback</h2>
+          <button onClick={playAllSounds} disabled={playbackState === 'playing'} className="btn btn-primary">
+            Play All
+          </button>
+          <button onClick={pauseAllSounds} disabled={playbackState !== 'playing'} className="btn btn-secondary">
+            Pause
+          </button>
+          <button onClick={stopAllSounds} disabled={playbackState === 'stopped' && !currentlyPlaying} className="btn btn-danger">
+            Stop
+          </button>
+          <button onClick={restartAllSounds} disabled={!filteredAndSortedStudents.some(s => s.sound_url)} className="btn btn-info">
+            Restart
+          </button>
+          <button onClick={toggleLoopPlayback} className={`btn ${isLooping ? 'btn-danger' : 'btn-success'}`}>
+            {isLooping ? 'Stop Loop' : 'Start Loop'}
+          </button>
+        </div>
+
         {/* Filter Section */}
         <div className="filter-section">
           <h2>Filter & Sort Students</h2>
@@ -260,9 +413,7 @@ const TeacherDashboard = () => {
               >
                 <option value="">All Classes</option>
                 {uniqueClasses.map((className) => (
-                  <option key={className} value={className}>
-                    {className}
-                  </option>
+                  <option key={className} value={className}>{className}</option>
                 ))}
               </select>
             </div>
