@@ -94,6 +94,19 @@ export const studentsAPI = {
 
   getPhotoUrl: (filename) =>
     `${API_BASE_URL}/students/photo/${filename}`,
+
+  uploadSound: (id, formData) =>
+    api.post(`/students/${id}/sound`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+
+  deleteSound: (id) =>
+    api.delete(`/students/${id}/sound`),
+
+  getSoundUrl: (filename) =>
+    `${API_BASE_URL}/students/sound/${filename}`,
 };
 
   

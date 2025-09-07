@@ -6,7 +6,7 @@ A comprehensive student dismissal management system with barcode scanning, real-
 
 - **🔐 Role-based Authentication**: Admin, Teacher, and Student roles with different permissions
 - **📊 Barcode Scanning**: Quick student check-in/check-out using barcode technology
-- **🔄 Real-time Updates**: Live tracking of active students with instant updates
+- **🔄 Real-time Updates (Socket.IO)**: Live tracking of active students with instant updates
 - **👥 Student Management**: Complete student database with class organization
 - **📈 Activity Tracking**: Comprehensive logging of all check-ins and check-outs
 - **📱 Responsive Design**: Optimized for desktop, tablet, and mobile devices
@@ -18,6 +18,7 @@ A comprehensive student dismissal management system with barcode scanning, real-
 
 ### Backend
 - **Node.js** with Express.js framework
+- **Socket.IO** for real-time communication
 - **SQLite** database for lightweight storage
 - **JWT** authentication for secure access
 - **CORS** enabled for cross-origin requests
@@ -42,6 +43,8 @@ A comprehensive student dismissal management system with barcode scanning, real-
 ```bash
 # Install backend dependencies
 cd server && npm install
+# Install Socket.IO for real-time communication
+npm install socket.io
 
 # Install frontend dependencies  
 cd ../client && npm install
@@ -57,6 +60,12 @@ PORT=5000
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 NODE_ENV=development
 ```
+
+Create a `.env` file in the client directory:
+```env
+REACT_APP_WEBSOCKET_URL=ws://localhost:5000
+```
+
 
 3. **Start the application:**
 ```bash
@@ -183,6 +192,7 @@ Web-App Penjemput V.04.2.beta/
 │   │   │   └── StudentDashboard.js # Student view
 │   │   ├── contexts/    # React Context providers
 │   │   │   └── AuthContext.js    # Authentication state
+│   │   │   └── SocketContext.js  # WebSocket state
 │   │   ├── services/    # API service layer
 │   │   │   └── api.js           # Axios API client
 │   │   ├── App.js       # Main application component

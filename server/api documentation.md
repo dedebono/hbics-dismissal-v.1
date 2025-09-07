@@ -7,6 +7,52 @@ This document provides detailed API documentation for the HBICS Dismissal System
 http://localhost:5000/api
 ```
 
+## Application Flow
+
+1.  **Initialization**: The first time the application is run, an administrator should send a request to `POST /api/auth/init` to initialize the database and create a default admin account.
+2.  **Login**: Users (admins or teachers) log in using their credentials via `POST /api/auth/login` to obtain a JWT token.
+3.  **Student Management**: Administrators can add, update, and delete students using the `/api/students` endpoints. This includes uploading student photos and sounds.
+4.  **Dismissal Process**: During dismissal, a teacher or admin uses a barcode scanner (or manual input) to check students in or out via `POST /api/dismissal/check-in` and `POST /api/dismissal/check-out`.
+5.  **Real-time Updates**: As students are checked in or out, the server broadcasts the updated list of active students to all connected WebSocket clients. This allows for real-time monitoring of the dismissal process.
+6.  **Analytics**: Administrators and teachers can view dismissal analytics and logs through the `/api/analytics` endpoints.
+
+## WebSocket API
+
+The application uses WebSockets to provide real-time updates for the student dismissal process.
+
+### Connecting to the WebSocket Server
+
+Clients can connect to the WebSocket server at the following URL:
+
+```
+ws://localhost:5000
+```
+
+### WebSocket Messages
+
+The server broadcasts messages to all connected clients when the list of active (checked-in) students changes. The message is a JSON object with the following structure:
+
+```json
+{
+  "type": "active_students",
+  "payload": [
+    {
+      "id": 1,
+      "student_id": 123,
+      "checked_in_at": "2023-01-01T12:00:00.000Z",
+      "name": "John Doe",
+      "class": "Grade 1",
+      "photo_url": "http://localhost:5000/api/students/photo/student_123.jpg"
+    }
+  ]
+}
+```
+
+-   `type`: Always `active_students`.
+-   `payload`: An array of active student objects. If no students are active, the payload will be an empty array.
+
+Clients should listen for messages and update their UI accordingly to reflect the real-time status of student dismissals.
+
 ## Authentication
 Most endpoints require authentication via JWT token. Include the token in the Authorization header:
 ```
@@ -455,6 +501,8 @@ Delete student sound (Admin only).
 - 500: Error removing sound
 
 ### Dismissal (`/dismissal`)
+
+**Note:** The `/check-in`, `/check-out`, and `/active/clear` endpoints trigger a WebSocket broadcast to all connected clients with the updated list of active students.
 
 #### POST /dismissal/check-in
 Check in a student by barcode.

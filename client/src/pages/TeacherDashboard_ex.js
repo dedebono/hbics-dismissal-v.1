@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext'; // Import useSocket
+import { useSocket } from '../contexts/SocketContext';// Import useSocket
 import { studentsAPI, dismissalAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import './TeacherDashboard.css';
@@ -8,7 +8,7 @@ import moment from 'moment-timezone';
 
 const TeacherDashboard = () => {
   const { user, logout } = useAuth();
-  const { socket, isConnected } = useSocket(); // Use the useSocket hook
+  const { socket, isConnected } = useSocket(); 
   const [barcode, setBarcode] = useState('');
   const [activeStudents, setActiveStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,26 +19,33 @@ const TeacherDashboard = () => {
   const barcodeInputRef = useRef(null);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null); // Track playing student barcode
   const audioRef = useRef(null);
+  const [isWebSocketConnected, setIsWebSocketConnected] = useState(false); // WebSocket connection status
 
-  // Effect hook for WebSocket events and periodic polling
+  console.log('TeacherDashboard rendered - User:', user, 'Barcode:', barcode, 'Active students count:', activeStudents.length);
+
   useEffect(() => {
-    if (socket) {
-      // WebSocket events
-      socket.on('student_checked_in', handleStudentCheckedIn);
-      socket.on('student_checked_out', handleStudentCheckedOut);
-    }
+    // Real-time updates using WebSocket
+    const socket = new WebSocket('ws://localhost:5000'); // Example WebSocket server URL
+    socket.onopen = () => {
+      console.log('WebSocket connection established');
+      setIsWebSocketConnected(true); // Set WebSocket status to connected
+    };
 
-    // Cleanup WebSocket listeners on component unmount
-    return () => {
-      if (socket) {
-        socket.off('student_checked_in', handleStudentCheckedIn);
-        socket.off('student_checked_out', handleStudentCheckedOut);
+    socket.onclose = () => {
+      console.log('WebSocket connection closed');
+      setIsWebSocketConnected(false); // Set WebSocket status to disconnected
+    };
+
+    socket.onmessage = (event) => {
+      const student = JSON.parse(event.data);
+      console.log('Socket message received:', student);
+      if (student.event === 'student_checked_in') {
+        handleStudentCheckedIn(student);
+      } else if (student.event === 'student_checked_out') {
+        handleStudentCheckedOut(student.barcode);
       }
     };
-  }, [socket]);
 
-  // Fetch active students once and then poll every 5 seconds
-  useEffect(() => {
     const fetchActiveStudents = async () => {
       try {
         const [activeResponse, studentsResponse] = await Promise.all([
@@ -56,7 +63,6 @@ const TeacherDashboard = () => {
           return {
             ...activeStudent,
             photo_url: fullStudentData?.photo_url || null,
-            sound_url: fullStudentData?.sound_url || null,
           };
         });
         setActiveStudents(enrichedActiveStudents);
@@ -65,37 +71,38 @@ const TeacherDashboard = () => {
       }
     };
 
-    fetchActiveStudents(); // Initial fetch
+    fetchActiveStudents(); // Fetch once when component mounts
 
-    const interval = setInterval(fetchActiveStudents, 5000); // Poll every 5 seconds
+    const interval = setInterval(fetchActiveStudents, 5000); // Poll every 5 seconds for updates
 
-    return () => clearInterval(interval); // Cleanup interval on unmount
+    // Cleanup WebSocket and interval on component unmount
+    return () => {
+      socket.close();
+      clearInterval(interval);
+    };
   }, []);
 
-  // Real-time check-in handling
   const handleStudentCheckedIn = (student) => {
     setActiveStudents((prevStudents) => {
       const newActiveStudents = [student, ...prevStudents];
       if (student.sound_url && currentlyPlaying === student.barcode) {
-        handlePlayPause(student.barcode); // If the student is playing, toggle sound
+        handlePlayPause(student.barcode);
       }
       return newActiveStudents;
     });
   };
 
-  // Real-time check-out handling
   const handleStudentCheckedOut = (barcode) => {
     setActiveStudents((prevStudents) => {
       const updatedStudents = prevStudents.filter((student) => student.barcode !== barcode);
       if (currentlyPlaying === barcode && audioRef.current) {
-        audioRef.current.pause(); // Stop audio if currently playing
+        audioRef.current.pause();
         setCurrentlyPlaying(null);
       }
       return updatedStudents;
     });
   };
 
-  // Barcode submission for check-out
   const handleBarcodeSubmit = async (e) => {
     e.preventDefault();
     if (!barcode.trim()) return;
@@ -105,7 +112,7 @@ const TeacherDashboard = () => {
       const activeStudent = activeStudents.find((student) => student.barcode === barcode);
 
       if (activeStudent) {
-        // Proceed with check-out
+        // If the student is checked in, proceed with check-out
         const response = await dismissalAPI.checkOut(barcode);
         toast.success(`Checked out: ${response.data.student.name}`);
         setBarcode('');
@@ -113,7 +120,7 @@ const TeacherDashboard = () => {
           prevStudents.filter((student) => student.barcode !== barcode)
         );
         if (currentlyPlaying === barcode && audioRef.current) {
-          audioRef.current.pause(); // Stop audio on check-out
+          audioRef.current.pause();
           setCurrentlyPlaying(null);
         }
       } else {
@@ -127,7 +134,6 @@ const TeacherDashboard = () => {
     }
   };
 
-  // Play or pause audio
   const handlePlayPause = (studentBarcode) => {
     const student = activeStudents.find((s) => s.barcode === studentBarcode);
     if (!student || !student.sound_url) {
@@ -136,7 +142,7 @@ const TeacherDashboard = () => {
     }
 
     if (currentlyPlaying === studentBarcode) {
-      audioRef.current?.pause(); // Pause audio
+      audioRef.current?.pause();
       setCurrentlyPlaying(null);
     } else {
       if (audioRef.current) {
@@ -155,7 +161,7 @@ const TeacherDashboard = () => {
   };
 
   const handleAudioEnded = () => {
-    setCurrentlyPlaying(null); // Reset playback when audio ends
+    setCurrentlyPlaying(null);
   };
 
   // Get unique class names from active students
@@ -211,7 +217,7 @@ const TeacherDashboard = () => {
   return (
     <div className="teacher-dashboard">
       {/* WebSocket Status Indicator */}
-      <div className={`websocket-status ${isConnected ? 'connected' : 'disconnected'}`} />
+      <div className={`websocket-status ${isWebSocketConnected ? 'connected' : 'disconnected'}`} />
 
       <header className="teacher-header">
         <div className="header-content">

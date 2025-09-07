@@ -4,13 +4,19 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import './index.css';
+import { AuthProvider } from './contexts/AuthContext';
+import { SocketProvider } from './contexts/SocketContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
-      <Toaster position="top-right" />
+      <AuthProvider>
+        <SocketProvider>
+          <App />
+          <Toaster position="top-right" />
+        </SocketProvider>
+      </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

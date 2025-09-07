@@ -2,6 +2,7 @@ const express = require('express');
 const Dismissal = require('../models/Dismissal');
 const Student = require('../models/Student');
 const { authenticateToken, requireTeacherOrAdmin } = require('../middleware/auth');
+const { broadcast } = require('../websocket');
 
 const router = express.Router();
 
@@ -32,6 +33,13 @@ router.post('/check-in', authenticateToken, (req, res) => {
       if (result.alreadyCheckedIn) {
         return res.status(400).json({ message: 'Student is already checked in' });
       }
+
+      // Broadcast the new active students list
+      Dismissal.getActiveStudents((err, activeStudents) => {
+        if (!err) {
+          broadcast({ type: 'active_students', payload: activeStudents });
+        }
+      });
 
       res.json({
         message: 'Student checked in successfully',
@@ -75,6 +83,13 @@ router.post('/check-out', authenticateToken, (req, res) => {
         return res.status(400).json({ message: 'Student is not checked in' });
       }
 
+      // Broadcast the new active students list
+      Dismissal.getActiveStudents((err, activeStudents) => {
+        if (!err) {
+          broadcast({ type: 'active_students', payload: activeStudents });
+        }
+      });
+
       res.json({
         message: 'Student checked out successfully',
         student: {
@@ -111,7 +126,7 @@ router.get('/logs', authenticateToken, (req, res) => {
   });
 });
 
-// Get today's activity
+// Get today\'s activity
 router.get('/today', authenticateToken,requireTeacherOrAdmin, (req, res) => {
   Dismissal.getTodayActivity((err, activity) => {
     if (err) {
@@ -140,7 +155,11 @@ router.delete('/active/clear', authenticateToken, (req, res) => {
     if (err) {
       return res.status(500).json({ message: 'Error clearing active students' });
     }
-    res.json({ 
+
+    // Broadcast the empty active students list
+    broadcast({ type: 'active_students', payload: [] });
+
+    res.json({
       message: `Cleared ${result.cleared} active students`,
       cleared: result.cleared
     });

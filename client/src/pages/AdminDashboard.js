@@ -27,6 +27,8 @@ const AdminDashboard = () => {
   const [uploading, setUploading] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [soundFile, setSoundFile] = useState(null);
+  const [uploadingSound, setUploadingSound] = useState(false);
 
   // User management state
   const [users, setUsers] = useState([]);
@@ -231,6 +233,56 @@ const AdminDashboard = () => {
         setPhotoFile(file);
       } else {
         toast.error('Please select a valid image file (JPEG, PNG, GIF)');
+      }
+    }
+  };
+
+  const handleSoundChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type.startsWith('audio/')) {
+        setSoundFile(file);
+      } else {
+        toast.error('Please select a valid audio file (MP3, WAV)');
+      }
+    }
+  };
+
+  const handleSoundUpload = async (e) => {
+    e.preventDefault();
+    if (!soundFile) {
+      toast.error('Please select a sound file');
+      return;
+    }
+
+    setUploadingSound(true);
+    try {
+      const formData = new FormData();
+      formData.append('sound', soundFile);
+      
+      await studentsAPI.uploadSound(selectedStudent.id, formData);
+      toast.success('Sound uploaded successfully');
+      setSoundFile(null);
+      fetchStudents(); // Refetch students to update the sound_url
+    } catch (error) {
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Error uploading sound');
+      }
+    } finally {
+      setUploadingSound(false);
+    }
+  };
+
+  const handleDeleteSound = async (student) => {
+    if (window.confirm(`Are you sure you want to delete ${student.name}'s sound?`)) {
+      try {
+        await studentsAPI.deleteSound(student.id);
+        toast.success('Sound deleted successfully');
+        fetchStudents();
+      } catch (error) {
+        toast.error('Error deleting sound');
       }
     }
   };
@@ -724,6 +776,48 @@ const renderStudentsTab = () => (
                   </button>
                 </form>
               </div>
+
+              {/* Sound Upload Section */}
+              <div className="sound-section">
+                <h4>Student Sound</h4>
+                {selectedStudent.sound_url ? (
+                  <div className="sound-preview">
+                    <audio controls src={selectedStudent.sound_url} />
+                    <button 
+                      onClick={() => handleDeleteSound(selectedStudent)} 
+                      className="btn btn-warning btn-sm"
+                    >
+                      Delete Sound
+                    </button>
+                  </div>
+                ) : (
+                  <p className="no-sound-text">No sound uploaded</p>
+                )}
+                
+                <form onSubmit={handleSoundUpload} className="sound-upload-form">
+                  <div className="form-group">
+                    <label>Upload New Sound:</label>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleSoundChange}
+                    />
+                    <small>Supported formats: MP3, WAV (Max 5MB)</small>
+                  </div>
+                  {soundFile && (
+                    <div className="file-info">
+                      <p>Selected file: {soundFile.name}</p>
+                    </div>
+                  )}
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary btn-sm"
+                    disabled={uploadingSound || !soundFile}
+                  >
+                    {uploadingSound ? 'Uploading...' : 'Upload Sound'}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
@@ -816,6 +910,7 @@ const renderStudentsTab = () => (
                   >
                     <option value="teacher">Teacher</option>
                     <option value="student">Student</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
               </div>

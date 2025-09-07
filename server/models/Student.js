@@ -3,12 +3,12 @@ const { db } = require('../config/database');
 class Student {
   // Create a new student
   static create(studentData, callback) {
-    const { barcode, name, class: className, photo_url } = studentData;
-    const sql = `INSERT INTO students (barcode, name, class, photo_url) VALUES (?, ?, ?, ?)`;
-    
-    db.run(sql, [barcode, name, className, photo_url || null], function(err) {
+    const { barcode, name, class: className, photo_url, sound_url } = studentData;
+    const sql = `INSERT INTO students (barcode, name, class, photo_url, sound_url) VALUES (?, ?, ?, ?, ?)`;
+
+    db.run(sql, [barcode, name, className, photo_url || null, sound_url || null], function (err) {
       if (err) return callback(err);
-      callback(null, { id: this.lastID, barcode, name, class: className, photo_url: photo_url || null });
+      callback(null, { id: this.lastID, barcode, name, class: className, photo_url: photo_url || null, sound_url: sound_url || null });
     });
   }
 
@@ -50,10 +50,10 @@ class Student {
 
   // Update student information
   static update(id, studentData, callback) {
-    const { barcode, name, class: className, photo_url } = studentData;
-    const sql = `UPDATE students SET barcode = ?, name = ?, class = ?, photo_url = ? WHERE id = ?`;
-    
-    db.run(sql, [barcode, name, className, photo_url || null, id], function(err) {
+    const { barcode, name, class: className, photo_url, sound_url } = studentData;
+    const sql = `UPDATE students SET barcode = ?, name = ?, class = ?, photo_url = ?, sound_url = ? WHERE id = ?`;
+
+    db.run(sql, [barcode, name, className, photo_url || null, sound_url || null, id], function (err) {
       if (err) return callback(err);
       callback(null, { changes: this.changes });
     });

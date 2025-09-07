@@ -7,7 +7,7 @@ class User {
     const { username, password, role = 'teacher' } = userData;
 
     // Validate role
-    const validRoles = ['teacher', 'student'];
+    const validRoles = ['admin','teacher', 'student'];
     if (!validRoles.includes(role)) {
       return callback(new Error('Invalid role'));
     }

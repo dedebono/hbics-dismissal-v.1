@@ -47,7 +47,7 @@ const Login = () => {
         navigate('/teacher');
       } else if (userRole === 'student') {
         console.log('Redirecting to student dashboard');
-        navigate('/');
+        navigate('/student');
       }
     } else {
       console.log('Login failed:', result.message);

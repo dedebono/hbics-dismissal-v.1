@@ -12,6 +12,25 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
+.websocket-status {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background-color: red; /* Default to red */
+}
+
+.websocket-status.connected {
+  background-color: green; /* Green when connected */
+}
+
+.websocket-status.disconnected {
+  background-color: red; /* Red when disconnected */
+}
+
+
 .header-content {
   display: flex;
   justify-content: space-between;
@@ -249,6 +268,33 @@
 
 .student-card:not(:has(.student-photo-container)) .student-info {
   text-align: center;
+}
+
+.student-card.playing {
+  border-color: #28a745; /* Green border to indicate playing */
+  box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
+}
+
+.sound-controls {
+  margin-top: 1rem;
+}
+
+.btn-sound {
+  background-color: #143258;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-sound:hover {
+  background-color: #2c5282;
+}
+
+.student-card.playing .btn-sound {
+  background-color: #c82333; /* Red for pause */
 }
 
 .stats-section {
