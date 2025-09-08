@@ -82,6 +82,11 @@ const TeacherDashboard = () => {
     };
   }, []);
 
+  // 3) Force autofocus effect — fokus saat mount & setiap selesai loading / koneksi WS berubah
+useEffect(() => {
+  barcodeInputRef.current?.focus();
+}, [loading, isWebSocketConnect
+
   const handleStudentCheckedIn = (student) => {
     setActiveStudents((prevStudents) => {
       const newActiveStudents = [student, ...prevStudents];
@@ -101,37 +106,6 @@ const TeacherDashboard = () => {
       }
       return updatedStudents;
     });
-  };
-
-  const handleBarcodeSubmit = async (e) => {
-    e.preventDefault();
-    if (!barcode.trim()) return;
-
-    setLoading(true);
-    try {
-      const activeStudent = activeStudents.find((student) => student.barcode === barcode);
-
-      if (activeStudent) {
-        // If the student is checked in, proceed with check-out
-        const response = await dismissalAPI.checkOut(barcode);
-        toast.success(`Checked out: ${response.data.student.name}`);
-        setBarcode('');
-        setActiveStudents((prevStudents) =>
-          prevStudents.filter((student) => student.barcode !== barcode)
-        );
-        if (currentlyPlaying === barcode && audioRef.current) {
-          audioRef.current.pause();
-          setCurrentlyPlaying(null);
-        }
-      } else {
-        toast.error('Student not checked in yet.');
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Error processing checkout');
-    } finally {
-      setLoading(false);
-      barcodeInputRef.current?.focus();
-    }
   };
 
   const handlePlayPause = (studentBarcode) => {

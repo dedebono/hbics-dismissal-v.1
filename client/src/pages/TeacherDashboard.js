@@ -82,12 +82,41 @@ const TeacherDashboard = () => {
       }
     };
 
-    fetchActiveStudents(); // Initial fetch
+    fetchActiveStudents();
 
-    const interval = setInterval(fetchActiveStudents, 5000); // Poll every 5 seconds
+    const interval = setInterval(fetchActiveStudents, 5000);
 
-    return () => clearInterval(interval); // Cleanup interval on unmount
+    return () => clearInterval(interval);
   }, []);
+
+  
+    // Barcode submission for check-out
+  const handleBarcodeSubmit = async (e) => {
+    e.preventDefault();
+    if (!barcode.trim()) return;
+
+    setLoading(true);
+    try {
+      const activeStudent = activeStudents.find((student) => student.barcode === barcode);
+      if (activeStudent) {
+        const response = await dismissalAPI.checkOut(barcode);
+        toast.success(`Checked out: ${response.data.student.name}`);
+        setBarcode('');
+      } else {
+        toast.error('Student not checked in yet.');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error processing checkout');
+    } finally {
+      setBarcode('');
+      setLoading(false);
+      barcodeInputRef.current?.focus();
+    }
+  };
+
+  useEffect(() => {
+  barcodeInputRef.current?.focus();
+}, [loading, socket]);
 
   // Real-time student check-in handler
   const handleStudentCheckedIn = (student) => {
@@ -120,29 +149,6 @@ const TeacherDashboard = () => {
       }
       return updatedStudents;
     });
-  };
-
-  // Barcode submission for check-out
-  const handleBarcodeSubmit = async (e) => {
-    e.preventDefault();
-    if (!barcode.trim()) return;
-
-    setLoading(true);
-    try {
-      const activeStudent = activeStudents.find((student) => student.barcode === barcode);
-      if (activeStudent) {
-        const response = await dismissalAPI.checkOut(barcode);
-        toast.success(`Checked out: ${response.data.student.name}`);
-        setBarcode('');
-      } else {
-        toast.error('Student not checked in yet.');
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Error processing checkout');
-    } finally {
-      setLoading(false);
-      barcodeInputRef.current?.focus();
-    }
   };
 
   // Handle play/pause for a single student
@@ -366,7 +372,9 @@ const TeacherDashboard = () => {
                 ref={barcodeInputRef}
                 type="text"
                 value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
+                onChange={(e) => 
+                  setBarcode(e.target.value)
+                }
                 placeholder="Scan or enter barcode"
                 disabled={loading}
                 autoFocus
