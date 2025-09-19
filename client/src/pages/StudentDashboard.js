@@ -130,16 +130,14 @@ const StudentDashboard = () => {
         </div>
       ),
       {
-        duration: 3000, // ~1s fade-in + 1s visible + 1s fade-out
+        duration: 3000,
+        position: 'top-center', 
         id: `checkin-${student.barcode}-${now}`,
       }
     );
-
-    // keep focus on scanner
     barcodeInputRef.current?.focus();
   }, []);
 
-  // socket handlers
   useEffect(() => {
     if (!socket) return;
 
@@ -310,8 +308,6 @@ const StudentDashboard = () => {
 
   return (
     <div className="student-dashboard">
-      {/* Remove this Toaster if you already mount one globally */}
-      <Toaster position="top-center" />
 
       <header className="student-header">
         <div className="header-content">
