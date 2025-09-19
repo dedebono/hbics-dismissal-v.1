@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const StudentManagementTab = ({
   students,
@@ -12,6 +13,9 @@ const StudentManagementTab = ({
   handleAdminCheckIn,
   checkingInId,
 }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const filteredStudents = (students || []).filter((student) => {
     const n = (student.name || '').toLowerCase();
     const c = (student.class || '').toLowerCase();
@@ -23,14 +27,16 @@ const StudentManagementTab = ({
     <div className="tab-content">
       <div className="tab-header">
         <h2>Student Management</h2>
-        <div className="action-buttons">
-          <button onClick={handleAddStudent} className="btn btn-primary">
-            Add Student
-          </button>
-          <button onClick={() => setShowCSVModal(true)} className="btn btn-secondary">
-            Upload CSV
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="action-buttons">
+            <button onClick={handleAddStudent} className="btn btn-primary">
+              Add Student
+            </button>
+            <button onClick={() => setShowCSVModal(true)} className="btn btn-secondary">
+              Upload CSV
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="search-bar">
@@ -78,18 +84,22 @@ const StudentManagementTab = ({
                   <td>{student.class}</td>
                   <td>
                     <div className="row-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => handleEditStudent(student)}
-                        className="btn btn-secondary btn-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteStudent(student)}
-                        className="btn btn-danger btn-sm"
-                      >
-                        Delete
-                      </button>
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => handleEditStudent(student)}
+                            className="btn btn-secondary btn-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStudent(student)}
+                            className="btn btn-danger btn-sm"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => handleAdminCheckIn(student)}
                         className="btn btn-success btn-sm"

@@ -7,7 +7,7 @@ class User {
     const { username, password, role = 'teacher' } = userData;
 
     // Validate role
-    const validRoles = ['admin','teacher', 'student'];
+    const validRoles = ['admin', 'teacher', 'student', 'educs'];
     if (!validRoles.includes(role)) {
       return callback(new Error('Invalid role'));
     }
@@ -60,7 +60,7 @@ class User {
 
   // Update user role
   static updateRole(userId, newRole, callback) {
-    const validRoles = ['teacher', 'student'];
+    const validRoles = ['teacher', 'student', 'educs'];
     if (!validRoles.includes(newRole)) {
       return callback(new Error('Invalid role'));
     }

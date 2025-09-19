@@ -48,6 +48,9 @@ const Login = () => {
       } else if (userRole === 'student') {
         console.log('Redirecting to student dashboard');
         navigate('/student');
+      } else if (userRole === 'educs') {
+        console.log('Redirecting to educs dashboard');
+        navigate('/educs');
       }
     } else {
       console.log('Login failed:', result.message);
@@ -90,11 +93,7 @@ const Login = () => {
         </form>
 
         <div className="demo-credentials">
-          <p><strong>Demo Credentials:</strong></p>
-          <p>Admin: admin / admin123</p>
-          <p>Teacher: teacher / teacher123</p>
-          <p>Student: student / student123</p> {/* Added student demo credentials */}
-        </div>
+                  </div>
 
         <div className="logo">
           <img src="/logohbics.png" alt="HBICS Logo" />
