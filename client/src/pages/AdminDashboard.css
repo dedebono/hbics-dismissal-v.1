@@ -146,65 +146,6 @@
   gap: 1rem;
 }
 
-.student-card {
-  background: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 15px;
-  border-left: 4px solid #f7b917;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 1.5rem;
-  min-height: 120px;
-}
-
-.student-photo-container {
-  flex-shrink: 0;
-}
-
-.student-photo-container .student-photo {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid #143258;
-}
-
-.student-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.student-info h3 {
-  color: #143258;
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: bold;
-}
-
-.student-class {
-  color: #666;
-  margin: 0;
-  font-weight: 500;
-  font-size: 1.1rem;
-}
-
-.student-time {
-  color: #888;
-  font-size: 1rem;
-  margin: 0;
-}
-
-/* For cards without photos, center the content */
-.student-card:not(:has(.student-photo-container)) {
-  justify-content: center;
-}
-
-.student-card:not(:has(.student-photo-container)) .student-info {
-  text-align: center;
-}
 
 .stats-grid {
   display: grid;
@@ -434,15 +375,6 @@
   gap: 1rem;
 }
 
-/* Photo Styles */
-.student-photo {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #ddd;
-}
-
 .no-photo {
   width: 50px;
   height: 50px;
@@ -510,11 +442,6 @@
 
 /* Responsive photo styles */
 @media (max-width: 768px) {
-  .student-photo {
-    width: 40px;
-    height: 40px;
-  }
-  
   .no-photo {
     width: 40px;
     height: 40px;

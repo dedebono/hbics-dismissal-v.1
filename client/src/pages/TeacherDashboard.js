@@ -33,6 +33,12 @@ const TeacherDashboard = () => {
   const [userHasInteracted, setUserHasInteracted] = useState(false)
   const playbackQueueRef = useRef([]) // array of students (filtered with sound)
   const currentPlayingIndexRef = useRef(-1)
+  const truncateName = (name = "", maxWords = 2, ellipsis = "....") => {
+  // Split on any whitespace, filter out empties
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= maxWords) return name;
+  return `${parts.slice(0, maxWords).join(" ")}${ellipsis}`;
+};
 
   // Enable audio after user interaction (autoplay policy)
   useEffect(() => {
@@ -373,12 +379,38 @@ const TeacherDashboard = () => {
   }, [filteredAndSortedStudents, playbackState, currentlyPlaying, stopAllSounds])
 
   // Clear filters
-  const handleClearFilters = useCallback(() => {
-    setFilterClass("")
-    setFilterName("")
-    setSortField("checked_in_at")
-    setSortDirection("desc")
-  }, [])
+// Pending UI values (edit here; apply on submit)
+const [pendingFilterClass, setPendingFilterClass] = useState("");
+const [pendingFilterName, setPendingFilterName] = useState("");
+const [pendingSort, setPendingSort] = useState(`${sortField}-${sortDirection}`);
+
+// Keep pending in sync when the applied values change elsewhere
+useEffect(() => {
+  setPendingFilterClass(filterClass);
+  setPendingFilterName(filterName);
+  setPendingSort(`${sortField}-${sortDirection}`);
+}, [filterClass, filterName, sortField, sortDirection]);
+
+const handleApplyFilters = useCallback((e) => {
+  e?.preventDefault?.();
+  const [field, direction] = pendingSort.split("-");
+  setSortField(field);
+  setSortDirection(direction);
+  setFilterClass(pendingFilterClass.trim());
+  setFilterName(pendingFilterName.trim());
+  toast.success("Filter & sort applied");
+}, [pendingFilterClass, pendingFilterName, pendingSort]);
+
+const handleClearFilters = useCallback(() => {
+  setFilterClass("");
+  setFilterName("");
+  setSortField("checked_in_at");
+  setSortDirection("desc");
+  // reset pending too so UI reflects cleared state
+  setPendingFilterClass("");
+  setPendingFilterName("");
+  setPendingSort("checked_in_at-desc");
+}, []);
 
   const hasActiveFilters = !!filterClass || !!filterName || sortField !== "checked_in_at" || sortDirection !== "desc"
 
@@ -388,18 +420,7 @@ const TeacherDashboard = () => {
       <header className="teacher-header">
         <div className="header-content">
           <h1>Teacher Dashboard</h1>
-          <div className="user-info">
-            <span>{user?.username || "Teacher"}</span>
-            <button onClick={logout} className="btn btn-logout">
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="teacher-main">
-        <div className="scanner-section">
-          <form onSubmit={handleBarcodeSubmit} className="scanner-form">
+              <form onSubmit={handleBarcodeSubmit} className="scanner-form">
             <input
               ref={barcodeInputRef}
               type="text"
@@ -411,12 +432,21 @@ const TeacherDashboard = () => {
               className="barcode-input"
               aria-label="Barcode input"
             />
-            <button type="submit" disabled={loading || !barcode.trim()} className="btn btn-primary">
+            <button type="submit" disabled={loading || !barcode.trim()} className="btn btn-submit-checkout">
               {loading ? "Processing..." : "Check Out"}
             </button>
           </form>
-        </div>
 
+          <div className="user-info">
+            <span>{user?.username || "Teacher"}</span>
+            <button onClick={logout} className="btn btn-logout">
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="teacher-main">
         <div className="controls-row">
           <div className="audio-controls">
             <button
@@ -443,46 +473,50 @@ const TeacherDashboard = () => {
             </button>
           </div>
 
-          <div className="filter-controls">
-            <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} className="filter-select">
-              <option value="">All Classes</option>
-              {uniqueClasses.map((className) => (
-                <option key={className} value={className}>
-                  {className}
-                </option>
-              ))}
-            </select>
+<form className="filter-controls" onSubmit={handleApplyFilters}>
+  <select
+    value={pendingFilterClass}
+    onChange={(e) => setPendingFilterClass(e.target.value)}
+    className="filter-select"
+  >
+    <option value="">All Classes</option>
+    {uniqueClasses.map((className) => (
+      <option key={className} value={className}>
+        {className}
+      </option>
+    ))}
+  </select>
 
-            <input
-              type="text"
-              value={filterName}
-              onChange={(e) => setFilterName(e.target.value)}
-              placeholder="Search name..."
-              className="filter-input"
-            />
+  <input
+    type="text"
+    value={pendingFilterName}
+    onChange={(e) => setPendingFilterName(e.target.value)}
+    placeholder="Search name..."
+    className="filter-input"
+  />
 
-            <select
-              value={`${sortField}-${sortDirection}`}
-              onChange={(e) => {
-                const [field, direction] = e.target.value.split("-")
-                setSortField(field)
-                setSortDirection(direction)
-              }}
-              className="filter-select"
-            >
-              <option value="checked_in_at-desc">Latest First</option>
-              <option value="checked_in_at-asc">Oldest First</option>
-              <option value="name-asc">Name A-Z</option>
-              <option value="name-desc">Name Z-A</option>
-              <option value="class-asc">Class A-Z</option>
-            </select>
+  <select
+    value={pendingSort}
+    onChange={(e) => setPendingSort(e.target.value)}
+    className="filter-select"
+  >
+    <option value="checked_in_at-desc">Latest First</option>
+    <option value="checked_in_at-asc">Oldest First</option>
+    <option value="name-asc">Name A-Z</option>
+    <option value="name-desc">Name Z-A</option>
+    <option value="class-asc">Class A-Z</option>
+  </select>
 
-            {hasActiveFilters && (
-              <button onClick={handleClearFilters} className="btn-clear" title="Clear Filters">
-                ✕
-              </button>
-            )}
-          </div>
+  {/* Apply (✅) triggers submit; Enter inside any field also submits */}
+  <button type="submit" className="btn-apply" title="Apply filter & sort">✅</button>
+
+  {hasActiveFilters && (
+    <button type="button" onClick={handleClearFilters} className="btn-clear" title="Clear Filters">
+      ✕
+    </button>
+  )}
+</form>
+
 
           <div className="stats-compact">
             <div className="stat-item">
@@ -493,46 +527,46 @@ const TeacherDashboard = () => {
         </div>
 
         <div className="active-students-section">
-          <h2>Active Students ({filteredAndSortedStudents.length})</h2>
-          {filteredAndSortedStudents.length === 0 ? (
-            <div className="empty-state">
-              <p>No active students</p>
-            </div>
-          ) : (
-            <div className="students-grid">
-              {filteredAndSortedStudents.map((student) => (
+          <div className="section-header">
+            <h2>Active Students ({activeStudents.length})</h2>
+          </div>
+
+{filteredAndSortedStudents.length === 0 ? (
+  <div className="empty-state"><p>No active students</p></div>
+) : (
+  <div className="students-grid">
+    {filteredAndSortedStudents.map((student) => (
+
                 <div
-                  key={student.barcode}
-                  className={`student-card ${currentlyPlaying === student.barcode ? "playing" : ""}`}
+                  key={student.barcode || student.name}
+                  className={`student-card ${currentlyPlaying === student.barcode ? 'playing' : ''}`}
                 >
                   {student.photo_url && (
                     <div className="student-photo-container">
                       <img
-                        src={student.photo_url || "/placeholder.svg"}
+                        src={student.photo_url}
                         alt={student.name}
                         className="student-photo"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none"
-                        }}
+                        onError={(e) => { e.target.style.display = 'none'; }}
                       />
                     </div>
                   )}
-
                   <div className="student-info">
-                    <h3>{student.name}</h3>
+                  <h3 title={student.name}>
+                    {truncateName(student.name, 3, "....")}
+                  </h3>
+                    <div className='info-row'>
                     <p className="student-class">{student.class}</p>
                     <p className="student-time">
-                      {moment.utc(student.checked_in_at).tz("Asia/Jakarta").format("HH:mm")}
+                      {moment.utc(student.checked_in_at).tz('Asia/Makassar').format('hh:mm A')}
                     </p>
-
+                    </div>
                     {student.sound_url && (
-                      <button
-                        onClick={() => handlePlayPause(student.barcode)}
-                        className="btn-sound"
-                        title={currentlyPlaying === student.barcode ? "Pause" : "Play Sound"}
-                      >
-                        {currentlyPlaying === student.barcode ? "⏸️" : "▶️"}
-                      </button>
+                      <div className="sound-controls">
+                        <button onClick={() => handlePlayPause(student.barcode)} className="btn-sound">
+                          {currentlyPlaying === student.barcode ? "⏸️" : "▶️"}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -540,7 +574,7 @@ const TeacherDashboard = () => {
             </div>
           )}
         </div>
-      </main>
+              </main>
 
       <audio ref={audioRef} onEnded={handleAudioEnded} />
     </div>

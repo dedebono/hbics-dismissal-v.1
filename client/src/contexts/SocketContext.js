@@ -13,7 +13,7 @@ export const SocketProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const websocketUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:5000';
+    const websocketUrl = process.env.REACT_APP_WEBSOCKET_URL;
     console.log('Attempting to connect to WebSocket at:', websocketUrl);
     const newSocket = io(websocketUrl);
     setSocket(newSocket);

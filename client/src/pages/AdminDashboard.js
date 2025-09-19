@@ -471,24 +471,10 @@ const renderStudentsTab = () => (
         <div className="active-students-grid">
           {activeStudents.map((student, index) => (
             <div key={index} className="student-card">
-              {student.photo_url && (
-                <div className="student-photo-container">
-                  <img
-                    src={student.photo_url}
-                    alt={student.name}
-                    className="student-photo"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
               <div className="student-info">
                 <h3>{student.name}</h3>
                 <p className="student-class">{student.class}</p>
-                <p className="student-time">
-                  Checked in: {moment.utc(student.checked_in_at).tz('Asia/Singapore').format('hh:mm A')}
-                </p>              </div>
+             </div>
             </div>
           ))}
         </div>

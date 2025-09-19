@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
 import { studentsAPI, dismissalAPI } from '../services/api';
-import toast from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import './StudentDashboard.css';
 import moment from 'moment-timezone';
 
@@ -12,7 +12,7 @@ const StudentDashboard = () => {
 
   const [barcode, setBarcode] = useState('');
   const [activeStudents, setActiveStudents] = useState([]);
-  const [allStudentsMap, setAllStudentsMap] = useState({}); // barcode -> student master
+  const [allStudentsMap, setAllStudentsMap] = useState({}); // barcode -> master student
   const [loading, setLoading] = useState(false);
   const barcodeInputRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(moment().format('HH:mm:ss'));
@@ -20,6 +20,15 @@ const StudentDashboard = () => {
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const audioRef = useRef(null);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
+
+  // prevent duplicate popups when both local submit & socket fire
+  const lastShownRef = useRef({}); // barcode -> timestamp (ms)
+
+  const truncateName = (name = '', maxWords = 2, ellipsis = '....') => {
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= maxWords) return name;
+    return `${parts.slice(0, maxWords).join(' ')}${ellipsis}`;
+  };
 
   useEffect(() => {
     const handleInteraction = () => {
@@ -30,7 +39,7 @@ const StudentDashboard = () => {
     return () => window.removeEventListener('click', handleInteraction);
   }, []);
 
-  // initial load: master students + active students
+  // initial load + poll
   useEffect(() => {
     let isMounted = true;
 
@@ -44,12 +53,12 @@ const StudentDashboard = () => {
         if (!isMounted) return;
 
         const map = {};
-        (studentsResp.data || []).forEach(s => {
+        (studentsResp.data || []).forEach((s) => {
           if (s.barcode) map[s.barcode] = s;
         });
         setAllStudentsMap(map);
 
-        const enriched = (activeResp.data || []).map(as => {
+        const enriched = (activeResp.data || []).map((as) => {
           const master = map[as.barcode] || {};
           return {
             ...as,
@@ -66,18 +75,68 @@ const StudentDashboard = () => {
     };
 
     const tick = setInterval(() => setCurrentTime(moment().format('HH:mm:ss')), 1000);
-    loadAll(); // Initial fetch
-    const interval = setInterval(loadAll, 5000); // Poll every 5 seconds
+    loadAll();
+    const interval = setInterval(loadAll, 5000);
 
     return () => {
       isMounted = false;
       clearInterval(tick);
-      clearInterval(interval); // Cleanup interval on unmount
+      clearInterval(interval);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
       }
     };
+  }, []);
+
+  // BIG centered check-in card
+  const showBigCheckin = useCallback((student) => {
+    // de-dupe within 2.5s window
+    const now = Date.now();
+    const last = lastShownRef.current[student.barcode] || 0;
+    if (now - last < 2500) return;
+    lastShownRef.current[student.barcode] = now;
+
+    const time = moment
+      .utc(student.checked_in_at || new Date().toISOString())
+      .tz('Asia/Makassar')
+      .format('hh:mm A');
+
+    toast.custom(
+      (t) => (
+        <div className={`checkin-overlay ${t.visible ? 'show' : 'hide'}`}>
+          <div className="checkin-card">
+            <div className="checkin-photo-wrap">
+              {student.photo_url ? (
+                <img
+                  src={student.photo_url}
+                  alt={student.name}
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+              ) : (
+                <div className="checkin-photo-fallback" />
+              )}
+            </div>
+
+            <div className="checkin-info">
+              <div className="checkin-title">Checked in</div>
+              <div className="checkin-name" title={student.name}>
+                {student.name || '—'}
+              </div>
+              <div className="checkin-class">{student.class || '—'}</div>
+              <div className="checkin-time">{time} WITA</div>
+            </div>
+          </div>
+        </div>
+      ),
+      {
+        duration: 3000, // ~1s fade-in + 1s visible + 1s fade-out
+        id: `checkin-${student.barcode}-${now}`,
+      }
+    );
+
+    // keep focus on scanner
+    barcodeInputRef.current?.focus();
   }, []);
 
   // socket handlers
@@ -87,7 +146,7 @@ const StudentDashboard = () => {
     const onFullSync = (data) => {
       if (data?.type !== 'active_students') return;
       const list = data.payload || [];
-      const enriched = list.map(as => {
+      const enriched = list.map((as) => {
         const master = allStudentsMap[as.barcode] || {};
         return {
           ...as,
@@ -98,22 +157,22 @@ const StudentDashboard = () => {
         };
       });
 
-      setActiveStudents(prev => {
-        // detect additions for optional auto-play
-        const previousBarcodes = new Set(prev.map(p => p.barcode));
-        const newOnes = enriched.filter(s => !previousBarcodes.has(s.barcode));
-        if (newOnes.length > 0) {
-          const withSound = newOnes.find(s => s.sound_url);
-          if (withSound) {
-            if (userHasInteracted) handlePlayPause(withSound.barcode, enriched);
-            else {
-              toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
-            }
-          }
+      setActiveStudents((prev) => {
+        const prevSet = new Set(prev.map((p) => p.barcode));
+        const newOnes = enriched.filter((s) => !prevSet.has(s.barcode));
+
+        // Big popup for newcomers
+        newOnes.forEach((s) => showBigCheckin(s));
+
+        // optional auto-play for the first newcomer with sound
+        const withSound = newOnes.find((s) => s.sound_url);
+        if (withSound) {
+          if (userHasInteracted) handlePlayPause(withSound.barcode, enriched);
+          else toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
         }
 
-        // stop if currently playing got removed
-        const stillExists = enriched.some(s => s.barcode === currentlyPlaying);
+        // stop audio if current student disappears
+        const stillExists = enriched.some((s) => s.barcode === currentlyPlaying);
         if (!stillExists && currentlyPlaying && audioRef.current) {
           audioRef.current.pause();
           setCurrentlyPlaying(null);
@@ -123,9 +182,8 @@ const StudentDashboard = () => {
     };
 
     const onCheckedIn = (payload) => {
-      // payload: { barcode, name?, class?, checked_in_at? }
-      setActiveStudents(prev => {
-        const exists = prev.some(s => s.barcode === payload.barcode);
+      setActiveStudents((prev) => {
+        const exists = prev.some((s) => s.barcode === payload.barcode);
         if (exists) return prev;
 
         const master = allStudentsMap[payload.barcode] || {};
@@ -139,6 +197,10 @@ const StudentDashboard = () => {
         };
         const next = [newStudent, ...prev];
 
+        // Big popup
+        showBigCheckin(newStudent);
+
+        // optional auto-play
         if (newStudent.sound_url) {
           if (userHasInteracted) handlePlayPause(newStudent.barcode, next);
           else toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
@@ -148,8 +210,8 @@ const StudentDashboard = () => {
     };
 
     const onCheckedOut = ({ barcode }) => {
-      setActiveStudents(prev => {
-        const next = prev.filter(s => s.barcode !== barcode);
+      setActiveStudents((prev) => {
+        const next = prev.filter((s) => s.barcode !== barcode);
         if (currentlyPlaying === barcode && audioRef.current) {
           audioRef.current.pause();
           setCurrentlyPlaying(null);
@@ -161,8 +223,6 @@ const StudentDashboard = () => {
     socket.on('active_students', onFullSync);
     socket.on('student_checked_in', onCheckedIn);
     socket.on('student_checked_out', onCheckedOut);
-
-    // optionally ask for a fresh snapshot
     socket.emit?.('request_active_students');
 
     return () => {
@@ -170,9 +230,9 @@ const StudentDashboard = () => {
       socket.off('student_checked_in', onCheckedIn);
       socket.off('student_checked_out', onCheckedOut);
     };
-  }, [socket, allStudentsMap, userHasInteracted, currentlyPlaying]);
+  }, [socket, allStudentsMap, userHasInteracted, currentlyPlaying, showBigCheckin]);
 
-  // keep input focused
+  // keep input focused while typing / after operations
   useEffect(() => {
     barcodeInputRef.current?.focus();
   }, [barcode]);
@@ -182,7 +242,7 @@ const StudentDashboard = () => {
       toast.error('Click anywhere on the page to enable sound.');
       return;
     }
-    const student = list.find(s => s.barcode === studentBarcode);
+    const student = list.find((s) => s.barcode === studentBarcode);
     if (!student || !student.sound_url) {
       toast.error('No sound available for this student.');
       return;
@@ -196,12 +256,13 @@ const StudentDashboard = () => {
         audioRef.current.src = student.sound_url;
         const p = audioRef.current.play();
         if (p !== undefined) {
-          p.then(() => setCurrentlyPlaying(studentBarcode))
-           .catch(err => {
-             console.error('Audio playback failed:', err);
-             toast.error('Could not play audio.');
-             setCurrentlyPlaying(null);
-           });
+          p
+            .then(() => setCurrentlyPlaying(studentBarcode))
+            .catch((err) => {
+              console.error('Audio playback failed:', err);
+              toast.error('Could not play audio.');
+              setCurrentlyPlaying(null);
+            });
         }
       }
     }
@@ -214,14 +275,28 @@ const StudentDashboard = () => {
     if (!barcode.trim()) return;
     setLoading(true);
     try {
-      const alreadyActive = activeStudents.find(s => s.barcode === barcode);
+      const alreadyActive = activeStudents.find((s) => s.barcode === barcode);
       if (alreadyActive) {
         toast.error(`${alreadyActive.name} is already checked in.`);
       } else {
         const localTime = new Date().toLocaleString();
         const resp = await dismissalAPI.checkIn(barcode, { localTime });
-        toast.success(`Checked in: ${resp.data.student.name}`);
-        // realtime update will arrive via socket
+        const apiStudent = resp.data?.student || {};
+        const master = allStudentsMap[barcode] || {};
+
+        const studentForPopup = {
+          barcode,
+          name: apiStudent.name ?? master.name ?? '',
+          class: apiStudent.class ?? master.class ?? '',
+          photo_url: master.photo_url ?? null,
+          checked_in_at: apiStudent.checked_in_at ?? new Date().toISOString(),
+        };
+
+        // Big centered card
+        showBigCheckin(studentForPopup);
+
+        // OPTIONAL: remove the small toast to avoid double messages
+        // toast.success(`Checked in: ${studentForPopup.name}`);
       }
       setBarcode('');
     } catch (err) {
@@ -235,10 +310,15 @@ const StudentDashboard = () => {
 
   return (
     <div className="student-dashboard">
-      <div className={`socket-status ${isConnected ? 'connected' : 'disconnected'}`} />
-      <main className="student-main">
-        <div className="scanner-section">
-          <h2>Student Check-in ({currentTime})</h2>
+      {/* Remove this Toaster if you already mount one globally */}
+      <Toaster position="top-center" />
+
+      <header className="student-header">
+        <div className="header-content">
+          <div>
+            <h2>Student Dismissal ({currentTime} WITA)</h2>
+            <h3>Active Students ({activeStudents.length})</h3>
+          </div>
           <form onSubmit={handleBarcodeSubmit} className="scanner-form">
             <div className="form-group">
               <input
@@ -252,19 +332,25 @@ const StudentDashboard = () => {
                 className="barcode-input"
               />
             </div>
-            <button type="submit" disabled={loading || !barcode.trim()} className="btn btn-primary scanner-btn">
+            <button
+              type="submit"
+              disabled={loading || !barcode.trim()}
+              className="btn btn-primary scanner-btn"
+            >
               {loading ? 'Processing...' : 'Submit'}
             </button>
           </form>
         </div>
+      </header>
 
+      <div className={`socket-status ${isConnected ? 'connected' : 'disconnected'}`} />
+
+      <main className="student-main">
         <div className="active-students-section">
-          <div className="section-header">
-            <h2>Active Students ({activeStudents.length})</h2>
-          </div>
-
           {activeStudents.length === 0 ? (
-            <div className="empty-state"><p>No active students</p></div>
+            <div className="empty-state">
+              <p>No active students</p>
+            </div>
           ) : (
             <div className="students-grid">
               {activeStudents.map((student) => (
@@ -278,20 +364,27 @@ const StudentDashboard = () => {
                         src={student.photo_url}
                         alt={student.name}
                         className="student-photo"
-                        onError={(e) => { e.target.style.display = 'none'; }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
                       />
                     </div>
                   )}
                   <div className="student-info">
-                    <h3>{student.name}</h3>
-                    <p className="student-class">{student.class}</p>
-                    <p className="student-time">
-                      Checked in: {moment.utc(student.checked_in_at).tz('Asia/Makassar').format('hh:mm A')}
-                    </p>
+                    <h3 title={student.name}>{truncateName(student.name, 3, '....')}</h3>
+                    <div className="info-row">
+                      <p className="student-class">{student.class}</p>
+                      <p className="student-time">
+                        {moment.utc(student.checked_in_at).tz('Asia/Makassar').format('hh:mm A')}
+                      </p>
+                    </div>
                     {student.sound_url && (
                       <div className="sound-controls">
-                        <button onClick={() => handlePlayPause(student.barcode)} className="btn-sound">
-                          {currentlyPlaying === student.barcode ? 'Pause' : 'Play Sound'}
+                        <button
+                          onClick={() => handlePlayPause(student.barcode)}
+                          className="btn-sound"
+                        >
+                          {currentlyPlaying === student.barcode ? '⏸️' : '▶️'}
                         </button>
                       </div>
                     )}
@@ -306,6 +399,7 @@ const StudentDashboard = () => {
       <footer className="student-footer">
         <p>HBICS Dismissal System v1.0 | &copy; 2025</p>
       </footer>
+
       <audio ref={audioRef} onEnded={handleAudioEnded} />
     </div>
   );
