@@ -6,6 +6,12 @@ import DismissalLogs from './DismissalLogs'; // Import DismissalLogs component
 import './AdminDashboard.css';
 import moment from 'moment-timezone';
 
+// Import the new tab components
+import StudentManagementTab from '../components/admin/StudentManagementTab';
+import ActiveStudentsTab from '../components/admin/ActiveStudentsTab';
+import StatisticsTab from '../components/admin/StatisticsTab';
+import UserManagementTab from '../components/admin/UserManagementTab';
+
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('students');
@@ -118,13 +124,6 @@ const AdminDashboard = () => {
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
-
-  const filteredStudents = (students || []).filter((student) => {
-    const n = (student.name || '').toLowerCase();
-    const c = (student.class || '').toLowerCase();
-    const q = (searchTerm || '').toLowerCase();
-    return n.includes(q) || c.includes(q);
-  });
 
   const handleClearAllActive = async () => {
     if (window.confirm('Are you sure you want to clear all active students?')) {
@@ -416,196 +415,6 @@ const AdminDashboard = () => {
       }
     }
   };
-  const renderStudentsTab = () => (
-    <div className="tab-content">
-      <div className="tab-header">
-        <h2>Student Management</h2>
-        <div className="action-buttons">
-          <button onClick={handleAddStudent} className="btn btn-primary">
-            Add Student
-          </button>
-          <button onClick={() => setShowCSVModal(true)} className="btn btn-secondary">
-            Upload CSV
-          </button>
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Search by name or class..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className="search-input"
-        />
-      </div>
-
-      <div className="students-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Photo</th>
-              <th>Barcode</th>
-              <th>Name</th>
-              <th>Class</th>
-              <th style={{ minWidth: 280 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredStudents.map((student) => {
-              const isActive = activeStudents.some(
-                (a) => a.barcode === student.barcode
-              );
-              return (
-                <tr key={student.id}>
-                  <td>
-                    {student.photo_url ? (
-                      <img
-                        src={student.photo_url}
-                        alt={student.name}
-                        className="student-photo"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="no-photo">No Photo</div>
-                    )}
-                  </td>
-                  <td>{student.barcode}</td>
-                  <td>{student.name}</td>
-                  <td>{student.class}</td>
-                  <td>
-                    <div className="row-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => handleEditStudent(student)}
-                        className="btn btn-secondary btn-sm"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteStudent(student)}
-                        className="btn btn-danger btn-sm"
-                      >
-                        Delete
-                      </button>
-
-                      <button
-                        onClick={() => handleAdminCheckIn(student)}
-                        className="btn btn-success btn-sm"
-                        disabled={checkingInId === student.id || isActive}
-                        title={isActive ? 'Already active' : 'Mark as active (check-in)'}
-                      >
-                        {isActive ? 'Active' : checkingInId === student.id ? 'Checking in...' : 'Check-in'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  const renderActiveStudentsTab = () => (
-    <div className="tab-content">
-      <div className="tab-header">
-        <h2>Active Students ({activeStudents.length})</h2>
-        {activeStudents.length > 0 && (
-          <button onClick={handleClearAllActive} className="btn btn-danger">
-            Clear All
-          </button>
-        )}
-      </div>
-      {activeStudents.length === 0 ? (
-        <div className="empty-state">
-          <p>No active students</p>
-        </div>
-      ) : (
-        <div className="active-students-grid">
-          {activeStudents.map((student, index) => (
-            <div key={index} className="student-card">
-              <div className="student-info">
-                <h3>{student.name}</h3>
-                <p className="student-class">{student.class}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderStatsTab = () => (
-    <div className="tab-content">
-      <h2>System Statistics</h2>
-      <div className="stats-grid">
-        <div className="stat-card">
-          <h3>{students.length}</h3>
-          <p>Total Students</p>
-        </div>
-        <div className="stat-card">
-          <h3>{activeStudents.length}</h3>
-          <p>Active Students</p>
-        </div>
-        <div className="stat-card">
-          <h3>0</h3>
-          <p>Today's Check-ins</p>
-        </div>
-        <div className="stat-card">
-          <h3>0</h3>
-          <p>Today's Check-outs</p>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderUsersTab = () => (
-    <div className="tab-content">
-      <div className="tab-header">
-        <h2>User Management</h2>
-        <div className="action-buttons">
-          <button onClick={handleAddUser} className="btn btn-primary">
-            Add User
-          </button>
-        </div>
-      </div>
-      {loadingUsers ? (
-        <div className="loading">Loading users...</div>
-      ) : (
-        <div className="logs-table-container">
-          <table className="logs-table">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Created At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.username}</td>
-                  <td>{user.role}</td>
-                  <td>{moment(user.created_at).format('YYYY-MM-DD')}</td>
-                  <td>
-                    <button onClick={() => handleDeleteUser(user)} className="btn btn-danger btn-sm">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="admin-dashboard">
@@ -657,10 +466,37 @@ const AdminDashboard = () => {
       </nav>
 
       <main className="admin-main">
-        {activeTab === 'students' && renderStudentsTab()}
-        {activeTab === 'active' && renderActiveStudentsTab()}
-        {activeTab === 'stats' && renderStatsTab()}
-        {activeTab === 'users' && renderUsersTab()}
+        {activeTab === 'students' && (
+          <StudentManagementTab
+            students={students}
+            activeStudents={activeStudents}
+            searchTerm={searchTerm}
+            handleSearchChange={handleSearchChange}
+            handleAddStudent={handleAddStudent}
+            setShowCSVModal={setShowCSVModal}
+            handleEditStudent={handleEditStudent}
+            handleDeleteStudent={handleDeleteStudent}
+            handleAdminCheckIn={handleAdminCheckIn}
+            checkingInId={checkingInId}
+          />
+        )}
+        {activeTab === 'active' && (
+          <ActiveStudentsTab
+            activeStudents={activeStudents}
+            handleClearAllActive={handleClearAllActive}
+          />
+        )}
+        {activeTab === 'stats' && (
+          <StatisticsTab students={students} activeStudents={activeStudents} />
+        )}
+        {activeTab === 'users' && (
+          <UserManagementTab
+            users={users}
+            loadingUsers={loadingUsers}
+            handleAddUser={handleAddUser}
+            handleDeleteUser={handleDeleteUser}
+          />
+        )}
         {activeTab === 'dismissalLogs' && <DismissalLogs />}
       </main>
 
