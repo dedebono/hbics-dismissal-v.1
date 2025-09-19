@@ -13,6 +13,7 @@ const AdminDashboard = () => {
   const [activeStudents, setActiveStudents] = useState([]);
   const [dismissalLogs, setDismissalLogs] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCSVModal, setShowCSVModal] = useState(false);
@@ -21,12 +22,15 @@ const AdminDashboard = () => {
   const [formData, setFormData] = useState({
     barcode: '',
     name: '',
-    class: ''
+    class: '',
   });
+
   const [csvFile, setCsvFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+
   const [photoFile, setPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
   const [soundFile, setSoundFile] = useState(null);
   const [uploadingSound, setUploadingSound] = useState(false);
 
@@ -37,13 +41,18 @@ const AdminDashboard = () => {
   const [userFormData, setUserFormData] = useState({
     username: '',
     password: '',
-    role: 'teacher'
+    role: 'teacher',
   });
   const [creatingUser, setCreatingUser] = useState(false);
 
- useEffect(() => {
+  // Track which student is being check-in’d to disable the button
+  const [checkingInId, setCheckingInId] = useState(null);
+
+  useEffect(() => {
     if (activeTab === 'students') {
+      // Fetch both lists so we can show "Active" status/disable Check-in
       fetchStudents();
+      fetchActiveStudents();
     } else if (activeTab === 'active') {
       fetchActiveStudents();
     } else if (activeTab === 'dismissalLogs') {
@@ -56,9 +65,41 @@ const AdminDashboard = () => {
   const fetchStudents = async () => {
     try {
       const response = await studentsAPI.getAll();
-      setStudents(response.data);
+      setStudents(response.data || []);
     } catch (error) {
       toast.error('Error fetching students');
+    }
+  };
+
+  const fetchActiveStudents = async () => {
+    try {
+      const [activeResponse, studentsResponse] = await Promise.all([
+        dismissalAPI.getActive(),
+        studentsAPI.getAll(),
+      ]);
+      const enrichedActiveStudents = (activeResponse.data || []).map((activeStudent) => {
+        const fullStudentData = (studentsResponse.data || []).find(
+          (student) =>
+            student.barcode === activeStudent.barcode ||
+            student.name === activeStudent.name
+        );
+        return {
+          ...activeStudent,
+          photo_url: fullStudentData?.photo_url || null,
+        };
+      });
+      setActiveStudents(enrichedActiveStudents);
+    } catch (error) {
+      toast.error('Error fetching active students');
+    }
+  };
+
+  const fetchDismissalLogs = async () => {
+    try {
+      const response = await dismissalAPI.getLogs();
+      setDismissalLogs(response.data || []);
+    } catch (error) {
+      toast.error('Error fetching dismissal logs');
     }
   };
 
@@ -75,47 +116,15 @@ const AdminDashboard = () => {
   };
 
   const handleSearchChange = (e) => {
-  setSearchTerm(e.target.value);
+    setSearchTerm(e.target.value);
   };
 
-  const filteredStudents = students.filter((student) => {
-    return (
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.class.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const filteredStudents = (students || []).filter((student) => {
+    const n = (student.name || '').toLowerCase();
+    const c = (student.class || '').toLowerCase();
+    const q = (searchTerm || '').toLowerCase();
+    return n.includes(q) || c.includes(q);
   });
-
-  
-  const fetchActiveStudents = async () => {
-    try {
-      const [activeResponse, studentsResponse] = await Promise.all([
-        dismissalAPI.getActive(),
-        studentsAPI.getAll()
-      ]);
-      const enrichedActiveStudents = activeResponse.data.map(activeStudent => {
-        const fullStudentData = studentsResponse.data.find(student =>
-          student.barcode === activeStudent.barcode ||
-          student.name === activeStudent.name
-        );
-        return {
-          ...activeStudent,
-          photo_url: fullStudentData?.photo_url || null
-        };
-      });
-      setActiveStudents(enrichedActiveStudents);
-    } catch (error) {
-      toast.error('Error fetching active students');
-    }
-  };
-
- const fetchDismissalLogs = async () => {
-    try {
-      const response = await dismissalAPI.getLogs();
-      setDismissalLogs(response.data);
-    } catch (error) {
-      toast.error('Error fetching dismissal logs');
-    }
-  };
 
   const handleClearAllActive = async () => {
     if (window.confirm('Are you sure you want to clear all active students?')) {
@@ -140,7 +149,7 @@ const AdminDashboard = () => {
     setFormData({
       barcode: student.barcode,
       name: student.name,
-      class: student.class
+      class: student.class,
     });
     setPhotoFile(null);
     setShowEditModal(true);
@@ -152,6 +161,8 @@ const AdminDashboard = () => {
         await studentsAPI.delete(student.id);
         toast.success('Student deleted successfully');
         fetchStudents();
+        // Optionally refresh active list in case the student was active
+        fetchActiveStudents();
       } catch (error) {
         toast.error('Error deleting student');
       }
@@ -170,6 +181,31 @@ const AdminDashboard = () => {
     }
   };
 
+  // ✅ NEW: Admin can trigger a check-in for a student
+  const handleAdminCheckIn = async (student) => {
+    if (!student?.barcode) {
+      toast.error('Student barcode not found');
+      return;
+    }
+    setCheckingInId(student.id);
+    try {
+      const localTime = new Date().toLocaleString();
+      // Backend expects { barcode } in body; your API helper can handle this:
+      await dismissalAPI.checkIn(student.barcode, { localTime });
+
+      toast.success(`Checked in: ${student.name}`);
+      // refresh active students so the button disables / counts update
+      await fetchActiveStudents();
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        'Error checking in student';
+      toast.error(msg);
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formData.barcode || !formData.name || !formData.class) {
@@ -185,10 +221,12 @@ const AdminDashboard = () => {
         await studentsAPI.update(selectedStudent.id, formData);
         toast.success('Student updated successfully');
       }
-      
+
       setShowAddModal(false);
       setShowEditModal(false);
       fetchStudents();
+      // keep active list up to date
+      fetchActiveStudents();
     } catch (error) {
       if (error.response?.data?.message === 'Barcode already exists') {
         toast.error('Barcode already exists');
@@ -207,10 +245,10 @@ const AdminDashboard = () => {
 
     setUploadingPhoto(true);
     try {
-      const formData = new FormData();
-      formData.append('photo', photoFile);
-      
-      const response = await studentsAPI.uploadPhoto(selectedStudent.id, formData);
+      const fd = new FormData();
+      fd.append('photo', photoFile);
+
+      await studentsAPI.uploadPhoto(selectedStudent.id, fd);
       toast.success('Photo uploaded successfully');
       setPhotoFile(null);
       fetchStudents();
@@ -228,7 +266,6 @@ const AdminDashboard = () => {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check if file is an image
       if (file.type.startsWith('image/')) {
         setPhotoFile(file);
       } else {
@@ -257,13 +294,13 @@ const AdminDashboard = () => {
 
     setUploadingSound(true);
     try {
-      const formData = new FormData();
-      formData.append('sound', soundFile);
-      
-      await studentsAPI.uploadSound(selectedStudent.id, formData);
+      const fd = new FormData();
+      fd.append('sound', soundFile);
+
+      await studentsAPI.uploadSound(selectedStudent.id, fd);
       toast.success('Sound uploaded successfully');
       setSoundFile(null);
-      fetchStudents(); // Refetch students to update the sound_url
+      fetchStudents(); // update sound_url
     } catch (error) {
       if (error.response?.data?.message) {
         toast.error(error.response.data.message);
@@ -296,11 +333,13 @@ const AdminDashboard = () => {
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('csvFile', csvFile);
-      
-      const response = await studentsAPI.uploadCSV(formData);
-      toast.success(`CSV uploaded: ${response.data.created} students created, ${response.data.failed} failed`);
+      const fd = new FormData();
+      fd.append('csvFile', csvFile);
+
+      const response = await studentsAPI.uploadCSV(fd);
+      toast.success(
+        `CSV uploaded: ${response.data.created} students created, ${response.data.failed} failed`
+      );
       setShowCSVModal(false);
       setCsvFile(null);
       fetchStudents();
@@ -322,21 +361,21 @@ const AdminDashboard = () => {
     }
   };
 
-  // User management functions
+  // User management
   const handleAddUser = () => {
     setUserFormData({
       username: '',
       password: '',
-      role: 'teacher'
+      role: 'teacher',
     });
     setShowAddUserModal(true);
   };
 
   const handleUserFormChange = (e) => {
     const { name, value } = e.target;
-    setUserFormData(prev => ({
+    setUserFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -377,8 +416,7 @@ const AdminDashboard = () => {
       }
     }
   };
-
-const renderStudentsTab = () => (
+  const renderStudentsTab = () => (
     <div className="tab-content">
       <div className="tab-header">
         <h2>Student Management</h2>
@@ -391,6 +429,7 @@ const renderStudentsTab = () => (
           </button>
         </div>
       </div>
+
       {/* Search Bar */}
       <div className="search-bar">
         <input
@@ -401,6 +440,7 @@ const renderStudentsTab = () => (
           className="search-input"
         />
       </div>
+
       <div className="students-table">
         <table>
           <thead>
@@ -409,51 +449,69 @@ const renderStudentsTab = () => (
               <th>Barcode</th>
               <th>Name</th>
               <th>Class</th>
-              <th>Actions</th>
+              <th style={{ minWidth: 280 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredStudents.map((student) => (
-              <tr key={student.id}>
-                <td>
-                  {student.photo_url ? (
-                    <img
-                      src={student.photo_url}
-                      alt={student.name}
-                      className="student-photo"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <div className="no-photo">No Photo</div>
-                  )}
-                </td>
-                <td>{student.barcode}</td>
-                <td>{student.name}</td>
-                <td>{student.class}</td>
-                <td>
-                  <button onClick={() => handleEditStudent(student)} className="btn btn-secondary btn-sm">
-                    Edit
-                  </button>
-                  {student.photo_url && (
-                    <button onClick={() => handleDeletePhoto(student)} className="btn btn-warning btn-sm">
-                      Delete Photo
-                    </button>
-                  )}
-                  <button onClick={() => handleDeleteStudent(student)} className="btn btn-danger btn-sm" style={{ marginLeft: '5px' }}>
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {filteredStudents.map((student) => {
+              const isActive = activeStudents.some(
+                (a) => a.barcode === student.barcode
+              );
+              return (
+                <tr key={student.id}>
+                  <td>
+                    {student.photo_url ? (
+                      <img
+                        src={student.photo_url}
+                        alt={student.name}
+                        className="student-photo"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="no-photo">No Photo</div>
+                    )}
+                  </td>
+                  <td>{student.barcode}</td>
+                  <td>{student.name}</td>
+                  <td>{student.class}</td>
+                  <td>
+                    <div className="row-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => handleEditStudent(student)}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteStudent(student)}
+                        className="btn btn-danger btn-sm"
+                      >
+                        Delete
+                      </button>
+
+                      <button
+                        onClick={() => handleAdminCheckIn(student)}
+                        className="btn btn-success btn-sm"
+                        disabled={checkingInId === student.id || isActive}
+                        title={isActive ? 'Already active' : 'Mark as active (check-in)'}
+                      >
+                        {isActive ? 'Active' : checkingInId === student.id ? 'Checking in...' : 'Check-in'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
     </div>
   );
-  
- const renderActiveStudentsTab = () => (
+
+  const renderActiveStudentsTab = () => (
     <div className="tab-content">
       <div className="tab-header">
         <h2>Active Students ({activeStudents.length})</h2>
@@ -474,7 +532,7 @@ const renderStudentsTab = () => (
               <div className="student-info">
                 <h3>{student.name}</h3>
                 <p className="student-class">{student.class}</p>
-             </div>
+              </div>
             </div>
           ))}
         </div>
@@ -519,8 +577,8 @@ const renderStudentsTab = () => (
       {loadingUsers ? (
         <div className="loading">Loading users...</div>
       ) : (
-      <div className="logs-table-container">
-        <table className="logs-table">
+        <div className="logs-table-container">
+          <table className="logs-table">
             <thead>
               <tr>
                 <th>Username</th>
@@ -549,7 +607,7 @@ const renderStudentsTab = () => (
     </div>
   );
 
- return (
+  return (
     <div className="admin-dashboard">
       <header className="admin-header">
         <div className="header-content">
@@ -565,31 +623,31 @@ const renderStudentsTab = () => (
 
       <nav className="admin-nav">
         <div className="nav-tabs">
-          <button 
+          <button
             className={activeTab === 'students' ? 'nav-tab active' : 'nav-tab'}
             onClick={() => setActiveTab('students')}
           >
             Students
           </button>
-          <button 
+          <button
             className={activeTab === 'active' ? 'nav-tab active' : 'nav-tab'}
             onClick={() => setActiveTab('active')}
           >
             Active Students
           </button>
-          <button 
+          <button
             className={activeTab === 'dismissalLogs' ? 'nav-tab active' : 'nav-tab'}
             onClick={() => setActiveTab('dismissalLogs')}
           >
             Dismissal Logs
           </button>
-          <button 
+          <button
             className={activeTab === 'stats' ? 'nav-tab active' : 'nav-tab'}
             onClick={() => setActiveTab('stats')}
           >
             Statistics
           </button>
-          <button 
+          <button
             className={activeTab === 'users' ? 'nav-tab active' : 'nav-tab'}
             onClick={() => setActiveTab('users')}
           >
@@ -603,13 +661,13 @@ const renderStudentsTab = () => (
         {activeTab === 'active' && renderActiveStudentsTab()}
         {activeTab === 'stats' && renderStatsTab()}
         {activeTab === 'users' && renderUsersTab()}
-        {activeTab === 'dismissalLogs' && <DismissalLogs />} {/* Render DismissalLogs component */}
+        {activeTab === 'dismissalLogs' && <DismissalLogs />}
       </main>
 
       <footer className="admin-footer">
         <p>HBICS Dismissal System v1.0 | &copy; 2025</p>
       </footer>
-    
+
       {/* Add Student Modal */}
       {showAddModal && (
         <div className="modal-overlay">
@@ -663,7 +721,7 @@ const renderStudentsTab = () => (
         </div>
       )}
 
-      {/* Edit Student Modal with Photo Upload */}
+      {/* Edit Student Modal with Photo & Sound sections */}
       {showEditModal && selectedStudent && (
         <div className="modal-overlay">
           <div className="modal modal-large">
@@ -673,7 +731,7 @@ const renderStudentsTab = () => (
                 &times;
               </button>
             </div>
-            
+
             <div className="modal-body">
               {/* Student Info Form */}
               <form onSubmit={handleFormSubmit}>
@@ -719,16 +777,16 @@ const renderStudentsTab = () => (
                 <h4>Student Photo</h4>
                 {selectedStudent.photo_url ? (
                   <div className="photo-preview">
-                    <img 
-                      src={selectedStudent.photo_url} 
+                    <img
+                      src={selectedStudent.photo_url}
                       alt={selectedStudent.name}
                       className="current-photo"
                       onError={(e) => {
                         e.target.style.display = 'none';
                       }}
                     />
-                    <button 
-                      onClick={() => handleDeletePhoto(selectedStudent)} 
+                    <button
+                      onClick={() => handleDeletePhoto(selectedStudent)}
                       className="btn btn-warning btn-sm"
                     >
                       Delete Photo
@@ -737,15 +795,11 @@ const renderStudentsTab = () => (
                 ) : (
                   <p className="no-photo-text">No photo uploaded</p>
                 )}
-                
+
                 <form onSubmit={handlePhotoUpload} className="photo-upload-form">
                   <div className="form-group">
                     <label>Upload New Photo:</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                    />
+                    <input type="file" accept="image/*" onChange={handlePhotoChange} />
                     <small>Supported formats: JPEG, PNG, GIF (Max 5MB)</small>
                   </div>
                   {photoFile && (
@@ -753,8 +807,8 @@ const renderStudentsTab = () => (
                       <p>Selected file: {photoFile.name}</p>
                     </div>
                   )}
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="btn btn-primary btn-sm"
                     disabled={uploadingPhoto || !photoFile}
                   >
@@ -769,8 +823,8 @@ const renderStudentsTab = () => (
                 {selectedStudent.sound_url ? (
                   <div className="sound-preview">
                     <audio controls src={selectedStudent.sound_url} />
-                    <button 
-                      onClick={() => handleDeleteSound(selectedStudent)} 
+                    <button
+                      onClick={() => handleDeleteSound(selectedStudent)}
                       className="btn btn-warning btn-sm"
                     >
                       Delete Sound
@@ -779,15 +833,11 @@ const renderStudentsTab = () => (
                 ) : (
                   <p className="no-sound-text">No sound uploaded</p>
                 )}
-                
+
                 <form onSubmit={handleSoundUpload} className="sound-upload-form">
                   <div className="form-group">
                     <label>Upload New Sound:</label>
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      onChange={handleSoundChange}
-                    />
+                    <input type="file" accept="audio/*" onChange={handleSoundChange} />
                     <small>Supported formats: MP3, WAV (Max 5MB)</small>
                   </div>
                   {soundFile && (
@@ -795,8 +845,8 @@ const renderStudentsTab = () => (
                       <p>Selected file: {soundFile.name}</p>
                     </div>
                   )}
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="btn btn-primary btn-sm"
                     disabled={uploadingSound || !soundFile}
                   >
@@ -823,12 +873,7 @@ const renderStudentsTab = () => (
               <div className="modal-body">
                 <div className="form-group">
                   <label>CSV File:</label>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileChange}
-                    required
-                  />
+                  <input type="file" accept=".csv" onChange={handleFileChange} required />
                   <small>CSV format: barcode,name,class</small>
                 </div>
                 {csvFile && (
@@ -841,11 +886,7 @@ const renderStudentsTab = () => (
                 <button type="button" onClick={() => setShowCSVModal(false)} className="btn btn-secondary">
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  disabled={uploading || !csvFile}
-                >
+                <button type="submit" className="btn btn-primary" disabled={uploading || !csvFile}>
                   {uploading ? 'Uploading...' : 'Upload CSV'}
                 </button>
               </div>
@@ -888,12 +929,7 @@ const renderStudentsTab = () => (
                 </div>
                 <div className="form-group">
                   <label>Role:</label>
-                  <select
-                    name="role"
-                    value={userFormData.role}
-                    onChange={handleUserFormChange}
-                    required
-                  >
+                  <select name="role" value={userFormData.role} onChange={handleUserFormChange} required>
                     <option value="teacher">Teacher</option>
                     <option value="student">Student</option>
                     <option value="admin">Admin</option>
