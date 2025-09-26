@@ -347,8 +347,7 @@ router.post('/:id/photo', authenticateToken, requireAdmin, photoUpload.single('p
     path: req.file.path
   });
 
-  // Generate photo URL using BACKEND_URL environment variable or default to localhost
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  const backendUrl = process.env.BACKEND_URL;
   const photoUrl = `${backendUrl}/api/students/photo/${req.file.filename}`;
 
   // Update student with photo URL using the dedicated photo update method
@@ -447,7 +446,7 @@ router.post('/:id/sound', authenticateToken, requireAdmin, soundUpload.single('s
   });
 
   // Generate sound URL using BACKEND_URL environment variable or default to localhost
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  const backendUrl = process.env.BACKEND_URL ;
   const soundUrl = `${backendUrl}/api/students/sound/${req.file.filename}`;
 
   // Update student with sound URL using the dedicated sound update method
