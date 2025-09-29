@@ -20,8 +20,6 @@ const StudentDashboard = () => {
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
   const audioRef = useRef(null);
   const [userHasInteracted, setUserHasInteracted] = useState(false);
-
-  // prevent duplicate popups when both local submit & socket fire
   const lastShownRef = useRef({}); // barcode -> timestamp (ms)
 
   const truncateName = (name = '', maxWords = 2, ellipsis = '....') => {
@@ -39,7 +37,6 @@ const StudentDashboard = () => {
     return () => window.removeEventListener('click', handleInteraction);
   }, []);
 
-  // initial load + poll
   useEffect(() => {
     let isMounted = true;
 
@@ -89,54 +86,85 @@ const StudentDashboard = () => {
     };
   }, []);
 
-  // BIG centered check-in card
-  const showBigCheckin = useCallback((student) => {
-    // de-dupe within 2.5s window
-    const now = Date.now();
-    const last = lastShownRef.current[student.barcode] || 0;
-    if (now - last < 2500) return;
-    lastShownRef.current[student.barcode] = now;
+  const getInitials = (name = '') => {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '👤';
+  const first = parts[0]?.[0] || '';
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] || '' : '';
+  return (first + last).toUpperCase();
+};
 
-    const time = moment
-      .utc(student.checked_in_at || new Date().toISOString())
-      .tz('Asia/Makassar')
-      .format('hh:mm A');
+const colorFromString = (s = '') => {
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h} 70% 45%)`;
+};
 
-    toast.custom(
-      (t) => (
-        <div className={`checkin-overlay ${t.visible ? 'show' : 'hide'}`}>
-          <div className="checkin-card">
-            <div className="checkin-photo-wrap">
-              {student.photo_url ? (
-                <img
-                  src={student.photo_url}
-                  alt={student.name}
-                  onError={(e) => (e.currentTarget.style.display = 'none')}
-                />
-              ) : (
-                <div className="checkin-photo-fallback" />
-              )}
+
+const showBigCheckin = useCallback((student) => {
+  const now = Date.now();
+  const last = lastShownRef.current[student.barcode] || 0;
+  if (now - last < 2500) return;
+  lastShownRef.current[student.barcode] = now;
+
+  const time = moment
+    .utc(student.checked_in_at || new Date().toISOString())
+    .tz('Asia/Makassar')
+    .format('hh:mm A');
+
+  // (Optional) warm the cache to reduce flicker
+  if (student.photo_url) {
+    const preload = new Image();
+    preload.src = student.photo_url;
+  }
+
+  toast.custom(
+    (t) => (
+      <div className={`checkin-overlay ${t.visible ? 'show' : 'hide'}`}>
+        <div className="checkin-card">
+          <div
+            className="checkin-photo-wrap"
+            style={{ background: colorFromString(student.name || student.class || '') }}
+          >
+            {student.photo_url ? (
+              <img
+                src={student.photo_url}
+                alt={student.name}
+                onError={(e) => {
+                  // Hide broken image and reveal initials fallback
+                  e.currentTarget.style.display = 'none';
+                  const wrap = e.currentTarget.parentElement;
+                  if (wrap) wrap.classList.add('no-photo');
+                }}
+              />
+            ) : (
+              <div className="checkin-initials">{getInitials(student.name)}</div>
+            )}
+            {/* Fallback initials element that becomes visible if .no-photo is applied */}
+            <div className="checkin-initials hidden">{getInitials(student.name)}</div>
+          </div>
+
+          <div className="checkin-info">
+            <div className="checkin-title">Checked in</div>
+            <div className="checkin-name" title={student.name}>
+              {student.name || '—'}
             </div>
-
-            <div className="checkin-info">
-              <div className="checkin-title">Checked in</div>
-              <div className="checkin-name" title={student.name}>
-                {student.name || '—'}
-              </div>
-              <div className="checkin-class">{student.class || '—'}</div>
-              <div className="checkin-time">{time} WITA</div>
-            </div>
+            <div className="checkin-class">{student.class || '—'}</div>
+            <div className="checkin-time">{time} WITA</div>
           </div>
         </div>
-      ),
-      {
-        duration: 3000,
-        position: 'top-center', 
-        id: `checkin-${student.barcode}-${now}`,
-      }
-    );
-    barcodeInputRef.current?.focus();
-  }, []);
+      </div>
+    ),
+    {
+      duration: 3000,
+      position: 'top-center',
+      id: `checkin-${student.barcode}-${now}`,
+    }
+  );
+
+  barcodeInputRef.current?.focus();
+}, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -158,18 +186,12 @@ const StudentDashboard = () => {
       setActiveStudents((prev) => {
         const prevSet = new Set(prev.map((p) => p.barcode));
         const newOnes = enriched.filter((s) => !prevSet.has(s.barcode));
-
-        // Big popup for newcomers
         newOnes.forEach((s) => showBigCheckin(s));
-
-        // optional auto-play for the first newcomer with sound
         const withSound = newOnes.find((s) => s.sound_url);
         if (withSound) {
           if (userHasInteracted) handlePlayPause(withSound.barcode, enriched);
           else toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
         }
-
-        // stop audio if current student disappears
         const stillExists = enriched.some((s) => s.barcode === currentlyPlaying);
         if (!stillExists && currentlyPlaying && audioRef.current) {
           audioRef.current.pause();
@@ -183,7 +205,6 @@ const StudentDashboard = () => {
       setActiveStudents((prev) => {
         const exists = prev.some((s) => s.barcode === payload.barcode);
         if (exists) return prev;
-
         const master = allStudentsMap[payload.barcode] || {};
         const newStudent = {
           ...payload,
@@ -195,10 +216,7 @@ const StudentDashboard = () => {
         };
         const next = [newStudent, ...prev];
 
-        // Big popup
         showBigCheckin(newStudent);
-
-        // optional auto-play
         if (newStudent.sound_url) {
           if (userHasInteracted) handlePlayPause(newStudent.barcode, next);
           else toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
@@ -230,7 +248,6 @@ const StudentDashboard = () => {
     };
   }, [socket, allStudentsMap, userHasInteracted, currentlyPlaying, showBigCheckin]);
 
-  // keep input focused while typing / after operations
   useEffect(() => {
     barcodeInputRef.current?.focus();
   }, [barcode]);
@@ -289,12 +306,8 @@ const StudentDashboard = () => {
           photo_url: master.photo_url ?? null,
           checked_in_at: apiStudent.checked_in_at ?? new Date().toISOString(),
         };
-
-        // Big centered card
         showBigCheckin(studentForPopup);
 
-        // OPTIONAL: remove the small toast to avoid double messages
-        // toast.success(`Checked in: ${studentForPopup.name}`);
       }
       setBarcode('');
     } catch (err) {
@@ -308,7 +321,6 @@ const StudentDashboard = () => {
 
   return (
     <div className="student-dashboard">
-
       <header className="student-header">
         <div className="header-content">
           <div>
@@ -338,7 +350,6 @@ const StudentDashboard = () => {
           </form>
         </div>
       </header>
-
       <div className={`socket-status ${isConnected ? 'connected' : 'disconnected'}`} />
 
       <main className="student-main">

@@ -133,7 +133,6 @@ const TeacherDashboard = () => {
   // Socket handlers (stable via useCallback)
   const handleStudentCheckedIn = useCallback((student) => {
     setActiveStudents((prev) => {
-      // enrich minimally to keep real-time snappy; full enrichment comes from poll
       return [student, ...prev]
     })
   }, [])
@@ -163,7 +162,6 @@ const TeacherDashboard = () => {
     }
   }, [socket, handleStudentCheckedIn, handleStudentCheckedOut])
 
-  // Barcode submission for check-out
   const handleBarcodeSubmit = useCallback(
     async (e) => {
       e.preventDefault()
@@ -189,12 +187,9 @@ const TeacherDashboard = () => {
     [barcode, activeStudents],
   )
 
-  // Keep focus on input after loading changes
   useEffect(() => {
     barcodeInputRef.current?.focus()
   }, [loading])
-
-  // Play/pause single student
   const handlePlayPause = useCallback(
     (studentBarcode) => {
       if (!userHasInteracted) {
@@ -300,7 +295,6 @@ const TeacherDashboard = () => {
 
   const restartAllSounds = useCallback(() => {
     stopAllSounds()
-    // short timeout to ensure audio element settled
     setTimeout(() => playAllSounds(), 100)
   }, [stopAllSounds, playAllSounds])
 
@@ -319,7 +313,6 @@ const TeacherDashboard = () => {
     })
   }, [playbackState, restartAllSounds])
 
-  // Audio ended handler (advance queue / loop)
   const handleAudioEnded = useCallback(() => {
     setCurrentlyPlaying(null)
 
@@ -360,14 +353,12 @@ const TeacherDashboard = () => {
     }
   }, [playbackState, isLooping, handlePlayPause, stopAllSounds])
 
-  // Keep queue in sync with current filtered list
   useEffect(() => {
     if (playbackState === "playing" || playbackState === "paused") {
       const newQueue = filteredAndSortedStudents.filter((s) => s.sound_url)
       const playingIndex = currentlyPlaying ? newQueue.findIndex((s) => s.barcode === currentlyPlaying) : -1
 
       if (currentlyPlaying && playingIndex === -1) {
-        // currently playing student removed (e.g., checked out)
         stopAllSounds()
         toast.success("Currently playing student has been checked out. Playback stopped.")
         return
@@ -432,8 +423,9 @@ const handleClearFilters = useCallback(() => {
               className="barcode-input"
               aria-label="Barcode input"
             />
-            <button type="submit" disabled={loading || !barcode.trim()} className="btn btn-submit-checkout">
-              {loading ? "Processing..." : "Check Out"}
+            <button type="submit" disabled={loading || !barcode.trim()} 
+            className="btn btn-submit-checkout">
+            {loading ? "Processing..." : "Check Out"}
             </button>
           </form>
 
@@ -536,7 +528,6 @@ const handleClearFilters = useCallback(() => {
 ) : (
   <div className="students-grid">
     {filteredAndSortedStudents.map((student) => (
-
                 <div
                   key={student.barcode || student.name}
                   className={`student-card ${currentlyPlaying === student.barcode ? 'playing' : ''}`}
