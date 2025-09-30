@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { dismissalAPI } from '../services/api';
 import './DismissalLogs.css';
 import moment from 'moment-timezone';
 
@@ -36,13 +36,7 @@ const DismissalLogs = () => {
 
 const fetchLogs = async () => {
   try {
-    const token = localStorage.getItem('token'); // Ensure token is being retrieved
-    console.log("Token being sent:", token);
-    const response = await axios.get('http://localhost:5000/api/dismissal/logs', {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await dismissalAPI.getLogs();
     setLogs(response.data);
     setLoading(false);
   } catch (err) {
@@ -144,7 +138,7 @@ const exportToCSV = () => {
       `"${log.class}"`,
       log.barcode,
       log.action,
-      `"${moment.utc(log.timestamp).tz('Asia/Singapore').format('YYYY-MM-DD HH:mm:ss')}"` // Convert to Singapore Time
+      `"${moment.utc(log.timestamp).tz('Asia/Makassar').format('YYYY-MM-DD HH:mm:ss')}"` // Convert to Makassar Time
     ].join(','))
   ].join('\n');
 
@@ -167,7 +161,7 @@ const exportToJSON = () => {
 
   const updatedLogs = filteredLogs.map(log => ({
     ...log,
-    timestamp: moment.utc(log.timestamp).tz('Asia/Singapore').format('YYYY-MM-DD HH:mm:ss') // Convert to Singapore Time
+    timestamp: moment.utc(log.timestamp).tz('Asia/Makassar').format('YYYY-MM-DD HH:mm:ss') // Convert to Makassar Time
   }));
 
   const jsonContent = JSON.stringify(updatedLogs, null, 2);
@@ -362,7 +356,7 @@ const exportToJSON = () => {
                     {getActionLabel(log.action)}
                   </span>
                 </td>
-                <td>{new Date(log.timestamp).toLocaleString('en-SG', { timeZone: 'Asia/Singapore' })}</td>
+                <td>{moment.utc(log.timestamp).tz('Asia/Makassar').format('YYYY-MM-DD HH:mm:ss')}</td>
               </tr>
             ))}
           </tbody>

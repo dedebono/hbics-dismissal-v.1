@@ -1,3 +1,7 @@
+:root{
+  --card-max: clamp(220px, 28vmin, 520px);
+}
+
 .student-dashboard {
   min-height: 100vh;
   display: flex;
@@ -237,8 +241,9 @@
 .checkin-overlay {
   position: fixed;
   z-index: 9999;
-  top: 100px;
-  left: 50%;
+  top: 50%; /* Center vertically */
+  left: 50%; /* Center horizontally */  
+  padding: 2rem;
   transform: translateX(-50%);
   transition: opacity 1000ms ease, transform 200ms ease;
   opacity: 0;
@@ -254,17 +259,16 @@
   display:flex;
   flex-direction: column;
   align-items: center;
+  padding: 3rem 4rem;
   gap: 10px;
   background: rgba(136, 107, 0, 0.55);   /* translucent glass */
-  font-size: 3rem;
-  padding: 2rem 3rem;
   border-radius: 14px;
   color:white;
   border-style: solid;
   border-color: #ddd;
-  min-height: 600px;
-  min-width: 700px;
-}
+  width:  auto;
+  height: auto;
+  aspect-ratio: 1 / 1;}
 
 /* Photo / initials */
 .checkin-photo-wrap {
@@ -300,7 +304,7 @@
 /* Text */
 .checkin-info { display: table-column; gap: 4px; }
 .checkin-title { font-size: 2rem; text-transform: uppercase; opacity: .8; letter-spacing: .06em; }
-.checkin-name { font-size: 4rem; font-weight: 800; line-height: 1.1; }
+.checkin-name { font-size: 2rem; font-weight: 800; line-height: 1.1; }
 .checkin-class { opacity: .9; }
 .checkin-time { font-weight: 700; margin-top: 4px;font-size: 2rem; }
 

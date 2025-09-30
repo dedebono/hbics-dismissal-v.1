@@ -28,6 +28,31 @@ const StudentDashboard = () => {
     return `${parts.slice(0, maxWords).join(' ')}${ellipsis}`;
   };
 
+  // === helpers for avatar fallback ===
+  const getInitials = (name = '') => {
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '👤';
+    const first = parts[0]?.[0] || '';
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] || '' : '';
+    return (first + last).toUpperCase();
+  };
+
+  const colorFromString = (s = '') => {
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+    const h = Math.abs(hash) % 360;
+    return `hsl(${h} 70% 45%)`;
+  };
+
+  // === sort newest first by checked_in_at/updated_at/created_at ===
+  const sortByNewest = (list = []) =>
+    [...list].sort((a, b) => {
+      const tA = Date.parse(a.checked_in_at || a.updated_at || a.created_at || 0) || 0;
+      const tB = Date.parse(b.checked_in_at || b.updated_at || b.created_at || 0) || 0;
+      if (tB !== tA) return tB - tA;
+      return String(a.barcode).localeCompare(String(b.barcode));
+    });
+
   useEffect(() => {
     const handleInteraction = () => {
       setUserHasInteracted(true);
@@ -65,7 +90,7 @@ const StudentDashboard = () => {
             class: as.class ?? master.class ?? '',
           };
         });
-        setActiveStudents(enriched);
+        setActiveStudents(sortByNewest(enriched));
       } catch (e) {
         console.error('Initial load failed:', e);
       }
@@ -86,85 +111,68 @@ const StudentDashboard = () => {
     };
   }, []);
 
-  const getInitials = (name = '') => {
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return '👤';
-  const first = parts[0]?.[0] || '';
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] || '' : '';
-  return (first + last).toUpperCase();
-};
+  const showBigCheckin = useCallback((student) => {
+    const now = Date.now();
+    const last = lastShownRef.current[student.barcode] || 0;
+    if (now - last < 2500) return;
+    lastShownRef.current[student.barcode] = now;
 
-const colorFromString = (s = '') => {
-  let hash = 0;
-  for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
-  const h = Math.abs(hash) % 360;
-  return `hsl(${h} 70% 45%)`;
-};
+    const time = moment
+      .utc(student.checked_in_at || new Date().toISOString())
+      .tz('Asia/Makassar')
+      .format('hh:mm A');
 
+    // warm image cache to reduce flicker
+    if (student.photo_url) {
+      const preload = new Image();
+      preload.src = student.photo_url;
+    }
 
-const showBigCheckin = useCallback((student) => {
-  const now = Date.now();
-  const last = lastShownRef.current[student.barcode] || 0;
-  if (now - last < 2500) return;
-  lastShownRef.current[student.barcode] = now;
-
-  const time = moment
-    .utc(student.checked_in_at || new Date().toISOString())
-    .tz('Asia/Makassar')
-    .format('hh:mm A');
-
-  // (Optional) warm the cache to reduce flicker
-  if (student.photo_url) {
-    const preload = new Image();
-    preload.src = student.photo_url;
-  }
-
-  toast.custom(
-    (t) => (
-      <div className={`checkin-overlay ${t.visible ? 'show' : 'hide'}`}>
-        <div className="checkin-card">
-          <div
-            className="checkin-photo-wrap"
-            style={{ background: colorFromString(student.name || student.class || '') }}
-          >
-            {student.photo_url ? (
-              <img
-                src={student.photo_url}
-                alt={student.name}
-                onError={(e) => {
-                  // Hide broken image and reveal initials fallback
-                  e.currentTarget.style.display = 'none';
-                  const wrap = e.currentTarget.parentElement;
-                  if (wrap) wrap.classList.add('no-photo');
-                }}
-              />
-            ) : (
-              <div className="checkin-initials">{getInitials(student.name)}</div>
-            )}
-            {/* Fallback initials element that becomes visible if .no-photo is applied */}
-            <div className="checkin-initials hidden">{getInitials(student.name)}</div>
-          </div>
-
-          <div className="checkin-info">
-            <div className="checkin-title">Checked in</div>
-            <div className="checkin-name" title={student.name}>
-              {student.name || '—'}
+    toast.custom(
+      (t) => (
+        <div className={`checkin-overlay ${t.visible ? 'show' : 'hide'}`}>
+          <div className="checkin-card">
+            <div
+              className="checkin-photo-wrap"
+              style={{ background: colorFromString(student.name || student.class || '') }}
+            >
+              {student.photo_url ? (
+                <img
+                  src={student.photo_url}
+                  alt={student.name}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const wrap = e.currentTarget.parentElement;
+                    if (wrap) wrap.classList.add('no-photo');
+                  }}
+                />
+              ) : (
+                <div className="checkin-initials">{getInitials(student.name)}</div>
+              )}
+              {/* Fallback initials element that becomes visible if .no-photo is applied */}
+              <div className="checkin-initials hidden">{getInitials(student.name)}</div>
             </div>
-            <div className="checkin-class">{student.class || '—'}</div>
-            <div className="checkin-time">{time} WITA</div>
+
+            <div className="checkin-info">
+              <div className="checkin-title">Checked in</div>
+              <div className="checkin-name" title={student.name}>
+                {student.name || '—'}
+              </div>
+              <div className="checkin-class">{student.class || '—'}</div>
+              <div className="checkin-time">{time} WITA</div>
+            </div>
           </div>
         </div>
-      </div>
-    ),
-    {
-      duration: 3000,
-      position: 'top-center',
-      id: `checkin-${student.barcode}-${now}`,
-    }
-  );
+      ),
+      {
+        duration: 3000,
+        position: 'top-center',
+        id: `checkin-${student.barcode}-${now}`,
+      }
+    );
 
-  barcodeInputRef.current?.focus();
-}, []);
+    barcodeInputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -183,21 +191,25 @@ const showBigCheckin = useCallback((student) => {
         };
       });
 
+      const enrichedSorted = sortByNewest(enriched);
+
       setActiveStudents((prev) => {
         const prevSet = new Set(prev.map((p) => p.barcode));
-        const newOnes = enriched.filter((s) => !prevSet.has(s.barcode));
+        const newOnes = enrichedSorted.filter((s) => !prevSet.has(s.barcode));
         newOnes.forEach((s) => showBigCheckin(s));
+
         const withSound = newOnes.find((s) => s.sound_url);
         if (withSound) {
-          if (userHasInteracted) handlePlayPause(withSound.barcode, enriched);
+          if (userHasInteracted) handlePlayPause(withSound.barcode, enrichedSorted);
           else toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
         }
-        const stillExists = enriched.some((s) => s.barcode === currentlyPlaying);
+
+        const stillExists = enrichedSorted.some((s) => s.barcode === currentlyPlaying);
         if (!stillExists && currentlyPlaying && audioRef.current) {
           audioRef.current.pause();
           setCurrentlyPlaying(null);
         }
-        return enriched;
+        return enrichedSorted; // keep newest first
       });
     };
 
@@ -214,7 +226,7 @@ const showBigCheckin = useCallback((student) => {
           class: payload.class ?? master.class ?? '',
           checked_in_at: payload.checked_in_at ?? new Date().toISOString(),
         };
-        const next = [newStudent, ...prev];
+        const next = sortByNewest([newStudent, ...prev]); // ensure order if timestamps vary
 
         showBigCheckin(newStudent);
         if (newStudent.sound_url) {
@@ -307,7 +319,7 @@ const showBigCheckin = useCallback((student) => {
           checked_in_at: apiStudent.checked_in_at ?? new Date().toISOString(),
         };
         showBigCheckin(studentForPopup);
-
+        // no need to push to list here: socket 'student_checked_in' should arrive
       }
       setBarcode('');
     } catch (err) {
@@ -321,6 +333,7 @@ const showBigCheckin = useCallback((student) => {
 
   return (
     <div className="student-dashboard">
+      <Toaster />
       <header className="student-header">
         <div className="header-content">
           <div>
