@@ -166,6 +166,33 @@ router.delete('/active/clear', authenticateToken, (req, res) => {
   });
 });
 
+// Clear a single active student
+router.delete('/active/:studentId', authenticateToken, (req, res) => {
+  const { studentId } = req.params;
+
+  Dismissal.clearSingleActive(studentId, (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error clearing active student' });
+    }
+
+    if (!result.cleared) {
+      return res.status(404).json({ message: 'Student not found in active list' });
+    }
+
+    // Broadcast the updated active students list
+    Dismissal.getActiveStudents((err, activeStudents) => {
+      if (!err) {
+        broadcast({ type: 'active_students', payload: activeStudents });
+      }
+    });
+
+    res.json({
+      message: 'Student removed from active list',
+      studentId: studentId
+    });
+  });
+});
+
 // Check student status by barcode
 router.get('/status/:barcode', authenticateToken, (req, res) => {
   const { barcode } = req.params;

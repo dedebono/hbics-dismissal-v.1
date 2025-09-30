@@ -133,6 +133,15 @@ class Dismissal {
       callback(null, { cleared: this.changes });
     });
   }
+
+  // Clear a single active student
+  static clearSingleActive(studentId, callback) {
+    const sql = `DELETE FROM active_students WHERE student_id = ?`;
+    db.run(sql, [studentId], function(err) {
+      if (err) return callback(err);
+      callback(null, { cleared: this.changes > 0 });
+    });
+  }
 }
 
 module.exports = Dismissal;

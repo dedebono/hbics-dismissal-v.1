@@ -130,8 +130,11 @@ export const dismissalAPI = {
   getHistory: (studentId, limit = 20) => 
     api.get(`/dismissal/history/${studentId}?limit=${limit}`),
   
-  clearActive: () => 
+  clearActive: () =>
     api.delete('/dismissal/active/clear'),
+
+  clearSingleActive: (studentId) =>
+    api.delete(`/dismissal/active/${studentId}`),
   
   getStatus: (barcode) => 
     api.get(`/dismissal/status/${barcode}`),

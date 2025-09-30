@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ActiveStudentsTab = ({ activeStudents, handleClearAllActive }) => {
+const ActiveStudentsTab = ({ activeStudents, handleClearAllActive, handleDeleteStudent }) => {
   return (
     <div className="tab-content">
       <div className="tab-header">
@@ -23,6 +23,13 @@ const ActiveStudentsTab = ({ activeStudents, handleClearAllActive }) => {
                 <h3>{student.name}</h3>
                 <p className="student-class">{student.class}</p>
               </div>
+              <button
+                onClick={() => handleDeleteStudent(student.id)}
+                className="delete-student-btn"
+                title="Remove student"
+              >
+                ❌
+              </button>
             </div>
           ))}
         </div>

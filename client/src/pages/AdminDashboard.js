@@ -137,6 +137,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteActiveStudent = async (studentId) => {
+    if (window.confirm('Are you sure you want to remove this student from active list?')) {
+      try {
+        await dismissalAPI.clearSingleActive(studentId);
+        toast.success('Student removed from active list');
+        fetchActiveStudents(); // Refresh the list
+      } catch (error) {
+        toast.error('Error removing student from active list');
+      }
+    }
+  };
+
   // Student management functions
   const handleAddStudent = () => {
     setFormData({ barcode: '', name: '', class: '' });
@@ -484,6 +496,7 @@ const AdminDashboard = () => {
           <ActiveStudentsTab
             activeStudents={activeStudents}
             handleClearAllActive={handleClearAllActive}
+            handleDeleteStudent={handleDeleteActiveStudent}
           />
         )}
         {activeTab === 'stats' && (
