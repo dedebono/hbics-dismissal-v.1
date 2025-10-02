@@ -92,11 +92,7 @@ const Login = () => {
           </button>
         </form>
 
-        <div className="demo-credentials">
-                  </div>
-
         <div className="logo">
-          <img src="/logohbics.png" alt="HBICS Logo" />
           <div className="credits">
             Dismissal App Version 1.0 | &copy;2025
           </div>
