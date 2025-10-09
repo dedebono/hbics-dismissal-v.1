@@ -64,9 +64,11 @@ const soundUpload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit for sound files
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /mp3|wav|ogg|m4a|aac/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    const allowedMimetypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/x-m4a', 'audio/aac'];
+    const allowedExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.aac'];
+
+    const extname = allowedExtensions.includes(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedMimetypes.includes(file.mimetype);
 
     if (mimetype && extname) {
       return cb(null, true);

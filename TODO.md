@@ -1,7 +1,5 @@
-# TODO: Edit DismissalLogs.js to use api.js and Asia/Makassar timezone
+# TODO: Fix .mp3 Upload Error
 
-- [x] Import dismissalAPI from '../services/api' in DismissalLogs.js
-- [x] Replace fetchLogs function to use dismissalAPI.getLogs() instead of axios
-- [x] Change timezone from 'Asia/Singapore' to 'Asia/Makassar' in exportToCSV function
-- [x] Change timezone from 'Asia/Singapore' to 'Asia/Makassar' in exportToJSON function
-- [x] Change timezone in table display from 'Asia/Singapore' to 'Asia/Makassar'
+## Tasks
+- [x] Update soundUpload fileFilter in server/routes/students.js to properly validate mimetypes for sound files (mp3, wav, ogg, m4a, aac)
+- [ ] Test the upload functionality after the fix
