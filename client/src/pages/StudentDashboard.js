@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
 import { studentsAPI, dismissalAPI } from '../services/api';
-import { Toaster, toast } from 'react-hot-toast';
+import Swal from 'sweetalert2';
 import './StudentDashboard.css';
 import moment from 'moment-timezone';
 
@@ -128,48 +128,27 @@ const StudentDashboard = () => {
       preload.src = student.photo_url;
     }
 
-    toast.custom(
-      (t) => (
-        <div className={`checkin-overlay ${t.visible ? 'show' : 'hide'}`}>
-          <div className="checkin-card">
-            <div
-              className="checkin-photo-wrap"
-              style={{ background: colorFromString(student.name || student.class || '') }}
-            >
-              {student.photo_url ? (
-                <img
-                  src={student.photo_url}
-                  alt={student.name}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                    const wrap = e.currentTarget.parentElement;
-                    if (wrap) wrap.classList.add('no-photo');
-                  }}
-                />
-              ) : (
-                <div className="checkin-initials">{getInitials(student.name)}</div>
-              )}
-              {/* Fallback initials element that becomes visible if .no-photo is applied */}
-              <div className="checkin-initials hidden">{getInitials(student.name)}</div>
-            </div>
-
-            <div className="checkin-info">
-              <div className="checkin-title">Checked in</div>
-              <div className="checkin-name" title={student.name}>
-                {student.name || '—'}
-              </div>
-              <div className="checkin-class">{student.class || '—'}</div>
-              <div className="checkin-time">{time} WITA</div>
-            </div>
+    Swal.fire({
+      title: 'Checked in',
+      html: `
+        <div style="display: flex; align-items: center; justify-content: center; flex-direction: column;">
+          <div style="width: 100px; height: 100px; border-radius: 50%; background: ${colorFromString(student.name || student.class || '')}; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+            ${student.photo_url ? `<img src="${student.photo_url}" alt="${student.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />` : `<span style="font-size: 24px; color: white;">${getInitials(student.name)}</span>`}
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 18px; font-weight: bold;">${student.name || '—'}</div>
+            <div style="font-size: 14px; color: #666;">${student.class || '—'}</div>
+            <div style="font-size: 14px; color: #666;">${time} WITA</div>
           </div>
         </div>
-      ),
-      {
-        duration: 3000,
-        position: 'top-center',
-        id: `checkin-${student.barcode}-${now}`,
+      `,
+      showConfirmButton: false,
+      timer: 3000,
+      position: 'top',
+      customClass: {
+        popup: 'swal-checkin-popup'
       }
-    );
+    });
 
     barcodeInputRef.current?.focus();
   }, []);
@@ -201,7 +180,14 @@ const StudentDashboard = () => {
         const withSound = newOnes.find((s) => s.sound_url);
         if (withSound) {
           if (userHasInteracted) handlePlayPause(withSound.barcode, enrichedSorted);
-          else toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
+          else Swal.fire({
+            title: 'Sound Notification',
+            text: 'Click anywhere to enable automatic sound.',
+            icon: 'info',
+            timer: 5000,
+            showConfirmButton: false,
+            position: 'top'
+          });
         }
 
         const stillExists = enrichedSorted.some((s) => s.barcode === currentlyPlaying);
@@ -231,7 +217,14 @@ const StudentDashboard = () => {
         showBigCheckin(newStudent);
         if (newStudent.sound_url) {
           if (userHasInteracted) handlePlayPause(newStudent.barcode, next);
-          else toast('Click anywhere to enable automatic sound.', { duration: 5000, icon: '🔊' });
+          else Swal.fire({
+            title: 'Sound Notification',
+            text: 'Click anywhere to enable automatic sound.',
+            icon: 'info',
+            timer: 5000,
+            showConfirmButton: false,
+            position: 'top'
+          });
         }
         return next;
       });
@@ -266,12 +259,24 @@ const StudentDashboard = () => {
 
   const handlePlayPause = (studentBarcode, list = activeStudents) => {
     if (!userHasInteracted) {
-      toast.error('Click anywhere on the page to enable sound.');
+      Swal.fire({
+        title: 'Sound Disabled',
+        text: 'Click anywhere on the page to enable sound.',
+        icon: 'warning',
+        timer: 3000,
+        showConfirmButton: false
+      });
       return;
     }
     const student = list.find((s) => s.barcode === studentBarcode);
     if (!student || !student.sound_url) {
-      toast.error('No sound available for this student.');
+      Swal.fire({
+        title: 'No Sound',
+        text: 'No sound available for this student.',
+        icon: 'info',
+        timer: 3000,
+        showConfirmButton: false
+      });
       return;
     }
 
@@ -287,7 +292,13 @@ const StudentDashboard = () => {
             .then(() => setCurrentlyPlaying(studentBarcode))
             .catch((err) => {
               console.error('Audio playback failed:', err);
-              toast.error('Could not play audio.');
+              Swal.fire({
+                title: 'Audio Error',
+                text: 'Could not play audio.',
+                icon: 'error',
+                timer: 3000,
+                showConfirmButton: false
+              });
               setCurrentlyPlaying(null);
             });
         }
@@ -304,7 +315,13 @@ const StudentDashboard = () => {
     try {
       const alreadyActive = activeStudents.find((s) => s.barcode === barcode);
       if (alreadyActive) {
-        toast.error(`${alreadyActive.name} is already checked in.`);
+        Swal.fire({
+          title: 'Already Checked In',
+          text: `${alreadyActive.name} is already checked in.`,
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false
+        });
       } else {
         const localTime = new Date().toLocaleString();
         const resp = await dismissalAPI.checkIn(barcode, { localTime });
@@ -323,7 +340,13 @@ const StudentDashboard = () => {
       }
       setBarcode('');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error processing barcode');
+      Swal.fire({
+        title: 'Error',
+        text: err.response?.data?.message || 'Error processing barcode',
+        icon: 'error',
+        timer: 3000,
+        showConfirmButton: false
+      });
       setBarcode('');
     } finally {
       setLoading(false);
@@ -333,7 +356,6 @@ const StudentDashboard = () => {
 
   return (
     <div className="student-dashboard">
-      <Toaster />
       <header className="student-header">
         <div className="header-content">
           <div>
@@ -391,7 +413,7 @@ const StudentDashboard = () => {
                     </div>
                   )}
                   <div className="student-info">
-                    <h3 title={student.name}>{truncateName(student.name, 3, '....')}</h3>
+                    <h3 title={student.name}>{truncateName(student.name, 2, ' ...')}</h3>
                     <div className="info-row">
                       <p className="student-class">{student.class}</p>
                       <p className="student-time">
@@ -417,7 +439,7 @@ const StudentDashboard = () => {
       </main>
 
       <footer className="student-footer">
-        <p>HBICS Dismissal System v1.0 | &copy; 2025</p>
+        <p>HBICS Dismissal System v1.0 | &copy; 2025 </p>
       </footer>
 
       <audio ref={audioRef} onEnded={handleAudioEnded} />
