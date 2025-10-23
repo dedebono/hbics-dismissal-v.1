@@ -78,7 +78,7 @@ const EducsDashboard = () => {
     <div className="admin-dashboard">
       <header className="admin-header">
         <div className="header-content">
-          <h1>Student Viewer</h1>
+          <h1>Education Consultan Viewer</h1>
           <div className="user-info">
             <span>Welcome, {user?.username}</span>
             <button onClick={logout} className="btn btn-secondary">
