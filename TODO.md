@@ -1,9 +1,9 @@
-# TODO: Add Search Box for Active Student Names in ActiveStudentsTab.js
-
-- [x] Import useState from React
-- [x] Add state for searchTerm using useState
-- [x] Add input field for search in the tab-header section
-- [x] Create filteredStudents by filtering activeStudents based on name matching searchTerm (case insensitive)
-- [x] Update the active-students-grid to display filteredStudents instead of activeStudents
-- [x] Update the header count to show filteredStudents.length
-- [x] Update empty state logic: if filteredStudents.length === 0 and activeStudents.length > 0, show "No students match your search"; else "No active students"
+- [x] Install required packages: html2canvas, jszip, file-saver, jsbarcode
+- [x] Add imports for JsBarcode, html2canvas, JSZip, and saveAs from file-saver in AdminDashboard.js
+- [x] Add handleDownloadBarcodes function in AdminDashboard.js (fixed to use JsBarcode instead of react-barcode)
+- [x] Add handleDownloadSingleBarcode function in AdminDashboard.js
+- [x] Pass handleDownloadBarcodes and handleDownloadSingleBarcode as props to StudentManagementTab
+- [x] Add handleDownloadBarcodes and handleDownloadSingleBarcode to props in StudentManagementTab.js
+- [x] Add "Download Barcode" button beside "Upload CSV" in StudentManagementTab.js
+- [x] Add "Barcode" button in the middle of "Delete" and "Check-in" buttons for each student
+- [ ] Test the functionality
