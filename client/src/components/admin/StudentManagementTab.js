@@ -8,6 +8,8 @@ const StudentManagementTab = ({
   handleSearchChange,
   handleAddStudent,
   setShowCSVModal,
+  handleDownloadBarcodes,
+  handleDownloadSingleBarcode,
   handleEditStudent,
   handleDeleteStudent,
   handleAdminCheckIn,
@@ -35,6 +37,9 @@ const StudentManagementTab = ({
             <button onClick={() => setShowCSVModal(true)} className="btn btn-secondary">
               Upload CSV
             </button>
+            <button onClick={handleDownloadBarcodes} className="btn btn-info">
+              Download Barcodes
+            </button>
           </div>
         )}
       </div>
@@ -54,7 +59,7 @@ const StudentManagementTab = ({
           <thead>
             <tr>
               <th>Photo</th>
-              <th>Barcode</th>
+              <th>Barcode 🆔 </th>
               <th>Name</th>
               <th>Class</th>
               <th style={{ minWidth: 280 }}>Actions</th>
@@ -89,24 +94,39 @@ const StudentManagementTab = ({
                           <button
                             onClick={() => handleEditStudent(student)}
                             className="btn btn-secondary btn-sm"
+                            title="edit student"
+                            style={{fontSize:'1.3rem', padding:'2px 8px'}}
+                            disabled={checkingInId === student.id}                            
                           >
-                            Edit
+                            ✏️
                           </button>
                           <button
                             onClick={() => handleDeleteStudent(student)}
                             className="btn btn-danger btn-sm"
+                            title="delete student"
+                            style={{fontSize:'1.3rem', padding:'2px 8px'}}
+                            disabled={checkingInId === student.id}
                           >
-                            Delete
+                            🗑️
+                          </button>
+                          <button
+                            onClick={() => handleDownloadSingleBarcode(student)}
+                            style={{fontSize:'1.3rem', padding:'2px 8px', backgroundColor:'grey', color:'black', border:'none', borderRadius:'4px'}}
+                            className="btn btn-info btn-sm"
+                            title="Download Barcode"
+                          >
+                            🆔
                           </button>
                         </>
                       )}
                       <button
                         onClick={() => handleAdminCheckIn(student)}
                         className="btn btn-success btn-sm"
+                        style={{fontSize:'1.2rem', padding:'2px 8px', fontWeight:'bold'}}
                         disabled={checkingInId === student.id || isActive}
                         title={isActive ? 'Already active' : 'Mark as active (check-in)'}
                       >
-                        {isActive ? 'Active' : checkingInId === student.id ? 'Checking in...' : 'Check-in'}
+                        {isActive ? '✔️' : checkingInId === student.id ? 'Checking in...' : 'Check-in'}
                       </button>
                     </div>
                   </td>

@@ -5,6 +5,10 @@ import toast from 'react-hot-toast';
 import DismissalLogs from './DismissalLogs'; // Import DismissalLogs component
 import './AdminDashboard.css';
 import moment from 'moment-timezone';
+import JsBarcode from 'jsbarcode';
+import html2canvas from 'html2canvas';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 // Import the new tab components
 import StudentManagementTab from '../components/admin/StudentManagementTab';
@@ -428,6 +432,91 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDownloadBarcodes = async () => {
+    if (!students || students.length === 0) {
+      toast.error('No students found to generate barcodes');
+      return;
+    }
+
+    try {
+      const zip = new JSZip();
+      const promises = students.map(async (student) => {
+        return new Promise((resolve) => {
+          // Create a temporary canvas element
+          const canvas = document.createElement('canvas');
+          canvas.width = 600;
+          canvas.height = 300;
+          const ctx = canvas.getContext('2d');
+
+          // Fill background with white
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Generate barcode using JsBarcode
+          JsBarcode(canvas, student.barcode, {
+            format: 'CODE128',
+            width: 4,
+            height: 200,
+            displayValue: true,
+            fontSize: 16,
+            margin: 10,
+          });
+
+          // Convert to blob
+          canvas.toBlob((blob) => {
+            const sanitizedName = student.name.replace(/[^a-zA-Z0-9]/g, '_');
+            zip.file(`${sanitizedName}.png`, blob);
+            resolve();
+          });
+        });
+      });
+
+      await Promise.all(promises);
+
+      // Generate zip file
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      saveAs(zipBlob, 'student_barcodes.zip');
+      toast.success('Barcode images downloaded successfully');
+    } catch (error) {
+      console.error('Error generating barcodes:', error);
+      toast.error('Error generating barcode images');
+    }
+  };
+
+  const handleDownloadSingleBarcode = async (student) => {
+    try {
+      // Create a temporary canvas element
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
+
+      // Fill background with white
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Generate barcode using JsBarcode
+      JsBarcode(canvas, student.barcode, {
+        format: 'CODE128',
+        width: 4,
+        height: 200,
+        displayValue: true,
+        fontSize: 16,
+        margin: 10,
+      });
+
+      // Convert to blob and download
+      canvas.toBlob((blob) => {
+        const sanitizedName = student.name.replace(/[^a-zA-Z0-9]/g, '_');
+        saveAs(blob, `${sanitizedName}_barcode.png`);
+        toast.success(`Barcode for ${student.name} downloaded successfully`);
+      });
+    } catch (error) {
+      console.error('Error generating barcode:', error);
+      toast.error('Error generating barcode image');
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
@@ -486,6 +575,8 @@ const AdminDashboard = () => {
             handleSearchChange={handleSearchChange}
             handleAddStudent={handleAddStudent}
             setShowCSVModal={setShowCSVModal}
+            handleDownloadBarcodes={handleDownloadBarcodes}
+            handleDownloadSingleBarcode={handleDownloadSingleBarcode}
             handleEditStudent={handleEditStudent}
             handleDeleteStudent={handleDeleteStudent}
             handleAdminCheckIn={handleAdminCheckIn}
