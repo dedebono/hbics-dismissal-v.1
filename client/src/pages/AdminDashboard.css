@@ -149,16 +149,71 @@
   gap: 0.2rem;
 }
 
+/* New/mounted cards fade + slide + de-blur on first paint */
 .student-card {
-  background: white;
-  border-radius: 10px;
-  padding: 0.1rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  border: 1px solid #eee;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  min-width: 250px;
+  position: relative;
+  border-radius: 14px;
+  background: #ffbb00;
   max-width: 300px;
-  width: 100%;
+  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+  overflow: hidden;
+
+  /* enter animation */
+  opacity: 0;
+  transform: translateY(16px) scale(.98);
+  filter: blur(6px);
+  animation: cardEnter .75s cubic-bezier(.22,.61,.36,1) forwards;
+  will-change: transform, opacity, filter;
+}
+
+/* Slight stagger so the grid feels lively on initial fill */
+.students-grid > .student-card:nth-child(1)  { animation-delay: 40ms; }
+.students-grid > .student-card:nth-child(2)  { animation-delay: 80ms; }
+.students-grid > .student-card:nth-child(3)  { animation-delay: 120ms; }
+.students-grid > .student-card:nth-child(4)  { animation-delay: 160ms; }
+.students-grid > .student-card:nth-child(5)  { animation-delay: 200ms; }
+.students-grid > .student-card:nth-child(6)  { animation-delay: 240ms; }
+.students-grid > .student-card:nth-child(7)  { animation-delay: 280ms; }
+.students-grid > .student-card:nth-child(8)  { animation-delay: 320ms; }
+
+/* Keyframes for the enter motion */
+@keyframes cardEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(.98);
+    filter: blur(6px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Optional: highlight a card while its audio is playing */
+.student-card.playing {
+  box-shadow: 0 0 0 3px rgba(0, 171, 85, .25), 0 8px 24px rgba(0,0,0,.12);
+  animation: pulseGlow 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+  from { box-shadow: 0 0 0 3px rgba(0, 171, 85, .25), 0 8px 24px rgba(0,0,0,.12); }
+  to   { box-shadow: 0 0 0 6px rgba(0, 171, 85, .30), 0 12px 28px rgba(0,0,0,.14); }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .student-card {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
 }
 
 .student-card:hover {

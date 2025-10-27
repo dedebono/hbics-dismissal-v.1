@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
 import { studentsAPI, dismissalAPI } from '../services/api';
@@ -22,7 +22,11 @@ const StudentDashboard = () => {
   const [userHasInteracted, setUserHasInteracted] = useState(false);
   const lastShownRef = useRef({}); // barcode -> timestamp (ms)
 
-  const truncateName = (name = '', maxWords = 2, ellipsis = '....') => {
+  // === NEW: filter state ===
+  const [selectedClass, setSelectedClass] = useState('ALL');
+  const [isFiltering, setIsFiltering] = useState(false);
+
+  const truncateName = (name = '', maxWords = 2, ellipsis = '') => {
     const parts = String(name).trim().split(/\s+/).filter(Boolean);
     if (parts.length <= maxWords) return name;
     return `${parts.slice(0, maxWords).join(' ')}${ellipsis}`;
@@ -87,7 +91,7 @@ const StudentDashboard = () => {
             photo_url: master.photo_url || null,
             sound_url: master.sound_url || null,
             name: as.name ?? master.name ?? '',
-            class: as.class ?? master.class ?? '',
+            class: (as.class ?? master.class ?? '').trim(),
           };
         });
         setActiveStudents(sortByNewest(enriched));
@@ -166,7 +170,7 @@ const StudentDashboard = () => {
           photo_url: as.photo_url ?? master.photo_url ?? null,
           sound_url: as.sound_url ?? master.sound_url ?? null,
           name: as.name ?? master.name ?? '',
-          class: as.class ?? master.class ?? '',
+          class: (as.class ?? master.class ?? '').trim(),
         };
       });
 
@@ -209,10 +213,10 @@ const StudentDashboard = () => {
           photo_url: master.photo_url || null,
           sound_url: master.sound_url || null,
           name: payload.name ?? master.name ?? '',
-          class: payload.class ?? master.class ?? '',
+          class: (payload.class ?? master.class ?? '').trim(),
           checked_in_at: payload.checked_in_at ?? new Date().toISOString(),
         };
-        const next = sortByNewest([newStudent, ...prev]); // ensure order if timestamps vary
+        const next = sortByNewest([newStudent, ...prev]);
 
         showBigCheckin(newStudent);
         if (newStudent.sound_url) {
@@ -331,12 +335,12 @@ const StudentDashboard = () => {
         const studentForPopup = {
           barcode,
           name: apiStudent.name ?? master.name ?? '',
-          class: apiStudent.class ?? master.class ?? '',
+          class: (apiStudent.class ?? master.class ?? '').trim(),
           photo_url: master.photo_url ?? null,
           checked_in_at: apiStudent.checked_in_at ?? new Date().toISOString(),
         };
         showBigCheckin(studentForPopup);
-        // no need to push to list here: socket 'student_checked_in' should arrive
+        // socket will add to the list
       }
       setBarcode('');
     } catch (err) {
@@ -354,14 +358,55 @@ const StudentDashboard = () => {
     }
   };
 
+  // === NEW: derive class options from either activeStudents or allStudentsMap
+  const classOptions = useMemo(() => {
+    const set = new Set();
+    // prefer classes in active list for relevance
+    activeStudents.forEach(s => s.class && set.add(s.class));
+    // fallback add from all students master if needed
+    if (set.size === 0) {
+      Object.values(allStudentsMap).forEach(s => s.class && set.add(String(s.class).trim()));
+    }
+    return ['ALL', ...Array.from(set).sort((a, b) => String(a).localeCompare(String(b)))];
+  }, [activeStudents, allStudentsMap]);
+
+  // === NEW: memoized filtered list
+  const visibleStudents = useMemo(() => {
+    if (selectedClass === 'ALL') return activeStudents;
+    return activeStudents.filter(s => (s.class || '').trim() === selectedClass);
+  }, [activeStudents, selectedClass]);
+
+  // === NEW: small visual smoothing flag when changing filter
+  useEffect(() => {
+    setIsFiltering(true);
+    const t = setTimeout(() => setIsFiltering(false), 150);
+    return () => clearTimeout(t);
+  }, [selectedClass]);
+
   return (
     <div className="student-dashboard">
       <header className="student-header">
         <div className="header-content">
           <div>
             <h2>Student Dismissal ({currentTime} WITA)</h2>
-            <h3>Active Students ({activeStudents.length})</h3>
+            <h3>Active Students ({visibleStudents.length}{selectedClass !== 'ALL' ? ` / ${activeStudents.length}` : ''})</h3>
           </div>
+
+          {/* NEW: Class filter (seamless) */}
+          <div className="filter-bar">
+            <label htmlFor="classFilter" style={{color:'white', padding:'10px', fontSize:'1.2rem' ,}}>Filter by class: </label>
+            <select
+              id="classFilter"
+              className="filter-select"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+            >
+              {classOptions.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+
           <form onSubmit={handleBarcodeSubmit} className="scanner-form">
             <div className="form-group">
               <input
@@ -389,13 +434,13 @@ const StudentDashboard = () => {
 
       <main className="student-main">
         <div className="active-students-section">
-          {activeStudents.length === 0 ? (
+          {visibleStudents.length === 0 ? (
             <div className="empty-state">
               <p>No active students</p>
             </div>
           ) : (
-            <div className="students-grid">
-              {activeStudents.map((student) => (
+            <div className={`students-grid ${isFiltering ? 'is-filtering' : ''}`}>
+              {visibleStudents.map((student) => (
                 <div
                   key={student.barcode || student.name}
                   className={`student-card ${currentlyPlaying === student.barcode ? 'playing' : ''}`}
@@ -413,7 +458,7 @@ const StudentDashboard = () => {
                     </div>
                   )}
                   <div className="student-info">
-                    <h3 title={student.name}>{truncateName(student.name, 2, ' ...')}</h3>
+                    <h3 title={student.name}>{truncateName(student.name, 2, '')}</h3>
                     <div className="info-row">
                       <p className="student-class">{student.class}</p>
                       <p className="student-time">
