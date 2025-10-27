@@ -197,9 +197,10 @@
 
 /* Optional: highlight a card while its audio is playing */
 .student-card.playing {
-  box-shadow: 0 0 0 3px rgba(0, 171, 85, .25), 0 8px 24px rgba(0,0,0,.12);
-  animation: pulseGlow 1.2s ease-in-out infinite alternate;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px #d97706;
 }
+
 
 @keyframes pulseGlow {
   from { box-shadow: 0 0 0 3px rgba(0, 171, 85, .25), 0 8px 24px rgba(0,0,0,.12); }
