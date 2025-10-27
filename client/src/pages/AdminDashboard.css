@@ -197,7 +197,7 @@
 
 /* Optional: highlight a card while its audio is playing */
 .student-card.playing {
-  background: #ffffff;
+  background: #5f5e5e;
   box-shadow: 0 0 0 2px #d97706;
 }
 
