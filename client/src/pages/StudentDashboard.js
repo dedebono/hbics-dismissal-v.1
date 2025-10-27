@@ -132,27 +132,49 @@ const StudentDashboard = () => {
       preload.src = student.photo_url;
     }
 
-    Swal.fire({
-      title: 'Checked in',
-      html: `
-        <div style="display: flex; align-items: center; justify-content: center; flex-direction: column;">
-          <div style="width: 100px; height: 100px; border-radius: 50%; background: ${colorFromString(student.name || student.class || '')}; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-            ${student.photo_url ? `<img src="${student.photo_url}" alt="${student.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />` : `<span style="font-size: 24px; color: white;">${getInitials(student.name)}</span>`}
-          </div>
-          <div style="text-align: center;">
-            <div style="font-size: 18px; font-weight: bold;">${student.name || '—'}</div>
-            <div style="font-size: 14px; color: #666;">${student.class || '—'}</div>
-            <div style="font-size: 14px; color: #666;">${time} WITA</div>
-          </div>
-        </div>
-      `,
-      showConfirmButton: false,
-      timer: 3000,
-      position: 'top',
-      customClass: {
-        popup: 'swal-checkin-popup'
-      }
-    });
+Swal.fire({
+  title: 'Checked in',
+  html: `
+    <div class="checkin-wrap">
+      <div class="checkin-avatar" style="background:${colorFromString(student.name || student.class || '')}">
+        ${
+          student.photo_url
+            ? `<img src="${student.photo_url}" alt="${student.name}" />`
+            : `<span class="checkin-initials">${getInitials(student.name)}</span>`
+        }
+      </div>
+
+      <div class="checkin-info">
+        <div class="checkin-name" title="${student.name || '—'}">${student.name || '—'}</div>
+        <div class="checkin-class">${student.class || '—'}</div>
+        <div class="checkin-time">${time} WITA</div>
+      </div>
+    </div>
+  `,
+  position: 'center',
+  showConfirmButton: false,
+  timer: 5000,
+  timerProgressBar: true,
+  backdrop: `
+    rgba(0,0,0,0.45)
+    left top
+    no-repeat
+  `,
+  customClass: {
+    popup: 'swal-checkin-popup',
+    title: 'swal-checkin-title',
+    htmlContainer: 'swal-checkin-html',
+  },
+  didOpen: () => {
+    // Preload image (already done above, but safe here too)
+  },
+  showClass: {
+    popup: 'swal-checkin-animate-in'
+  },
+  hideClass: {
+    popup: 'swal-checkin-animate-out'
+  }
+});
 
     barcodeInputRef.current?.focus();
   }, []);

@@ -237,86 +237,97 @@
   }
 }
 
-/* ===== Big centered check-in card (toast.custom content) ===== */
-
-/* Overlay & animation */
-.checkin-overlay {
-  position: fixed;
-  z-index: 9999;
-  top: 50%; /* Center vertically */
-  left: 50%; /* Center horizontally */  
-  padding: 2rem;
-  transform: translateX(-50%);
-  transition: opacity 1000ms ease, transform 200ms ease;
-  opacity: 0;
-  pointer-events: none;
+/* Big, centered check-in modal */
+.swal-checkin-popup {
+  width: min(92vw, 640px) !important;
+  border-radius: 20px !important;
+  padding: 28px 24px !important;
+  box-shadow: 0 30px 80px rgba(0,0,0,.35) !important;
 }
-.checkin-overlay.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.checkin-overlay.hide { opacity: 0; transform: translateX(-50%) translateY(-8px); }
 
-/* Card */
-.checkin-card {
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  display:flex;
+.swal-checkin-title {
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+  margin-bottom: .25rem !important;
+}
+
+.swal-checkin-html {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Content layout */
+.checkin-wrap {
+  display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3rem 4rem;
-  gap: 10px;
-  background: rgba(136, 107, 0, 0.55);   /* translucent glass */
-  border-radius: 14px;
-  color:white;
-  border-style: solid;
-  border-color: #ddd;
-  width:  auto;
-  height: auto;
-  aspect-ratio: 1 / 1;}
-
-/* Photo / initials */
-.checkin-photo-wrap {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  overflow: hidden;
-  position: relative;
-  display: grid;
-  border-style: solid;
-  border-color: #ddd;
-  place-items: center;
+  gap: 14px;
 }
-.checkin-photo-wrap img {
+
+/* Big circular avatar */
+.checkin-avatar {
+  width: clamp(120px, 22vw, 180px);
+  height: clamp(120px, 22vw, 180px);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+}
+.checkin-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
-.checkin-photo-wrap .checkin-initials {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 44px;
+.checkin-initials {
+  font-size: clamp(38px, 6vw, 64px);
   font-weight: 800;
-  color: rgba(255,255,255,.92);
+  color: #fff;
   letter-spacing: .5px;
 }
-.checkin-photo-wrap .checkin-initials.hidden { display: none; }
-.checkin-photo-wrap.no-photo .checkin-initials.hidden { display: grid; }
 
-/* Text */
-.checkin-info { display: table-column; gap: 4px; }
-.checkin-title { font-size: 2rem; text-transform: uppercase; opacity: .8; letter-spacing: .06em; }
-.checkin-name { font-size: 2rem; font-weight: 800; line-height: 1.1; }
-.checkin-class { opacity: .9; }
-.checkin-time { font-weight: 700; margin-top: 4px;font-size: 2rem; }
-
-@keyframes checkinFadeIn {
-  0% { opacity: 0; transform: translateY(6px) scale(0.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+/* Texts */
+.checkin-info {
+  text-align: center;
 }
-@keyframes checkinFadeOut {
-  0% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-6px) scale(0.98); }
+.checkin-name {
+  font-size: clamp(20px, 3.2vw, 28px);
+  font-weight: 800;
+  line-height: 1.15;
+}
+.checkin-class,
+.checkin-time {
+  font-size: clamp(14px, 2.6vw, 16px);
+  color: #667085;
+  margin-top: 2px;
+}
+
+/* Smooth pop-in/out */
+.swal-checkin-animate-in {
+  animation: swalCheckinIn .36s cubic-bezier(.18,.89,.32,1.28);
+}
+.swal-checkin-animate-out {
+  animation: swalCheckinOut .22s ease forwards;
+}
+@keyframes swalCheckinIn {
+  from { transform: scale(.92); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes swalCheckinOut {
+  to   { transform: scale(.96); opacity: 0; }
+}
+
+/* Optional: softer backdrop blur on supported browsers */
+.swal2-container {
+  backdrop-filter: blur(2px);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .swal-checkin-animate-in,
+  .swal-checkin-animate-out {
+    animation: none !important;
+  }
 }
 
 
