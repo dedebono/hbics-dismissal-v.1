@@ -19,6 +19,7 @@ const DismissalLogs = () => {
   const [sortOrder, setSortOrder] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchLogs();
@@ -33,6 +34,15 @@ const DismissalLogs = () => {
     const classes = [...new Set(logs.map(log => log.class))].sort();
     setAvailableClasses(classes);
   }, [logs]);
+
+  useEffect(() => {
+    // Keep totalPages and current page in sync with filtered results
+    const pages = Math.max(1, Math.ceil(filteredLogs.length / itemsPerPage));
+    setTotalPages(pages);
+    if (currentPage > pages) {
+      setCurrentPage(pages);
+    }
+  }, [filteredLogs, itemsPerPage, currentPage]);
 
 const fetchLogs = async () => {
   try {
@@ -191,9 +201,21 @@ const exportToJSON = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredLogs.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const paginate = (pageNumber) => {
+    const target = Math.min(Math.max(pageNumber, 1), totalPages);
+    setCurrentPage(target);
+  };
+
+  // Chunk pagination buttons to 20-page windows to avoid overly long controls
+  const chunkSize = 20;
+  const currentChunk = Math.floor((currentPage - 1) / chunkSize);
+  const startPage = currentChunk * chunkSize + 1;
+  const endPage = Math.min(startPage + chunkSize - 1, totalPages);
+  const pageNumbers = [];
+  for (let i = startPage; i <= endPage; i++) {
+    pageNumbers.push(i);
+  }
 
   if (loading) {
     return <div className="loading">Loading dismissal logs...</div>;
@@ -372,17 +394,26 @@ const exportToJSON = () => {
           >
             Previous
           </button>
-          
-          {[...Array(totalPages)].map((_, index) => (
+
+          {startPage > 1 && (
             <button
-              key={index + 1}
-              onClick={() => paginate(index + 1)}
-              className={`pagination-btn ${currentPage === index + 1 ? 'active' : ''}`}
+              onClick={() => paginate(startPage - chunkSize)}
+              className="pagination-btn"
             >
-              {index + 1}
+              Prev 20
+            </button>
+          )}
+
+          {pageNumbers.map((page) => (
+            <button
+              key={page}
+              onClick={() => paginate(page)}
+              className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+            >
+              {page}
             </button>
           ))}
-          
+
           <button
             onClick={() => paginate(currentPage + 1)}
             disabled={currentPage === totalPages}

@@ -116,7 +116,8 @@ router.get('/active', authenticateToken, (req, res) => {
 
 // Get dismissal logs
 router.get('/logs', authenticateToken, (req, res) => {
-  const limit = parseInt(req.query.limit) || 50;
+  // If no limit is provided, return all logs
+  const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
   
   Dismissal.getDismissalLogs(limit, (err, logs) => {
     if (err) {

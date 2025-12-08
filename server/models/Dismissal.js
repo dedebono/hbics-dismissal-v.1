@@ -79,16 +79,22 @@ class Dismissal {
   }
 
   // Get dismissal logs with student details
-  static getDismissalLogs(limit = 50, callback) {
-    const sql = `
+  static getDismissalLogs(limit, callback) {
+    // Build SQL dynamically so we can return all rows when limit is not provided
+    let sql = `
       SELECT dl.*, s.name, s.class, s.barcode 
       FROM dismissal_logs dl 
       INNER JOIN students s ON dl.student_id = s.id 
-      ORDER BY dl.timestamp DESC 
-      LIMIT ?
+      ORDER BY dl.timestamp DESC
     `;
+    const params = [];
+
+    if (Number.isFinite(limit)) {
+      sql += ' LIMIT ?';
+      params.push(limit);
+    }
     
-    db.all(sql, [limit], (err, rows) => {
+    db.all(sql, params, (err, rows) => {
       if (err) return callback(err);
       callback(null, rows);
     });

@@ -121,8 +121,11 @@ export const dismissalAPI = {
   getActive: () => 
     api.get('/dismissal/active'),
   
-  getLogs: (limit = 50) => 
-    api.get(`/dismissal/logs?limit=${limit}`),
+  // If no limit is provided, fetch all logs
+  getLogs: (limit) => {
+    const query = Number.isFinite(limit) ? `?limit=${limit}` : '';
+    return api.get(`/dismissal/logs${query}`);
+  },
   
   getToday: () => 
     api.get('/dismissal/today'),
