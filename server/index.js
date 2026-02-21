@@ -38,7 +38,7 @@ app.get('/', (req, res) => {
 });
 
 // Serve React app if built, otherwise show message
-app.use(express.static(path.join(__dirname, '../client/build')));
+app.use(express.static(path.join(__dirname, '../client/build'), { index: false }));
 
 app.get('*', (req, res) => {
   const buildPath = path.join(__dirname, '../client/build/index.html');
