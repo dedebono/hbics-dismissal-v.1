@@ -32,6 +32,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running', timestamp: new Date().toISOString() });
 });
 
+// Root health check
+app.get('/', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // Serve React app if built, otherwise show message
 app.use(express.static(path.join(__dirname, '../client/build')));
 
