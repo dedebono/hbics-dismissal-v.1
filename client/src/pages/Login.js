@@ -39,7 +39,10 @@ const Login = () => {
       const userRole = JSON.parse(atob(localStorage.getItem('token').split('.')[1])).role;
       console.log('User role:', userRole);
 
-      if (userRole === 'admin') {
+      if (userRole === 'superadmin') {
+        console.log('Redirecting to superadmin dashboard');
+        navigate('/superadmin');
+      } else if (userRole === 'admin') {
         console.log('Redirecting to admin dashboard');
         navigate('/admin');
       } else if (userRole === 'teacher') {

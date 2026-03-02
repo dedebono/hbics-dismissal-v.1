@@ -15,9 +15,8 @@ const ProtectedRoute = ({ children, roles }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (roles && !roles.includes(user.role)) {
-    // If the user's role is not in the allowed list, redirect to a default page
-    // For example, a general dashboard or a "not authorized" page
+  // superadmin can access any route; or check if role is in allowed list
+  if (roles && user.role !== 'superadmin' && !roles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
 

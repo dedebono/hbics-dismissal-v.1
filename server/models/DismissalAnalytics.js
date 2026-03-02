@@ -2,7 +2,7 @@ const { db } = require('../config/database');
 
 class DismissalAnalytics {
   // Get daily statistics
-  static getDailyStats(date, callback) {
+  static getDailyStats(date, school_id, callback) {
     const sql = `
       SELECT 
         DATE(timestamp) as date,
@@ -12,15 +12,15 @@ class DismissalAnalytics {
         MIN(timestamp) as first_activity,
         MAX(timestamp) as last_activity
       FROM dismissal_logs
-      WHERE DATE(timestamp) = DATE(?)
+      WHERE DATE(timestamp) = DATE(?) AND school_id = ?
       GROUP BY DATE(timestamp)
     `;
-    
-    db.get(sql, [date], callback);
+
+    db.get(sql, [date, school_id], callback);
   }
 
   // Get weekly statistics
-  static getWeeklyStats(startDate, endDate, callback) {
+  static getWeeklyStats(startDate, endDate, school_id, callback) {
     const sql = `
       SELECT 
         DATE(timestamp) as date,
@@ -28,16 +28,16 @@ class DismissalAnalytics {
         COUNT(CASE WHEN action = 'check_out' THEN 1 END) as check_outs,
         COUNT(DISTINCT student_id) as unique_students
       FROM dismissal_logs
-      WHERE DATE(timestamp) BETWEEN DATE(?) AND DATE(?)
+      WHERE DATE(timestamp) BETWEEN DATE(?) AND DATE(?) AND school_id = ?
       GROUP BY DATE(timestamp)
       ORDER BY date
     `;
-    
-    db.all(sql, [startDate, endDate], callback);
+
+    db.all(sql, [startDate, endDate, school_id], callback);
   }
 
   // Get class-based statistics
-  static getClassStats(date, callback) {
+  static getClassStats(date, school_id, callback) {
     const sql = `
       SELECT 
         s.class,
@@ -46,12 +46,12 @@ class DismissalAnalytics {
         COUNT(DISTINCT dl.student_id) as unique_students
       FROM dismissal_logs dl
       INNER JOIN students s ON dl.student_id = s.id
-      WHERE DATE(dl.timestamp) = DATE(?)
+      WHERE DATE(dl.timestamp) = DATE(?) AND dl.school_id = ?
       GROUP BY s.class
       ORDER BY s.class
     `;
-    
-    db.all(sql, [date], callback);
+
+    db.all(sql, [date, school_id], callback);
   }
 
   // Get peak hours analysis
@@ -67,7 +67,7 @@ class DismissalAnalytics {
       GROUP BY strftime('%H', timestamp)
       ORDER BY hour
     `;
-    
+
     db.all(sql, [date], callback);
   }
 
@@ -87,7 +87,7 @@ class DismissalAnalytics {
         AND DATE(dl.timestamp) BETWEEN DATE(?) AND DATE(?)
       GROUP BY s.id, s.name, s.class
     `;
-    
+
     db.get(sql, [studentId, startDate, endDate], callback);
   }
 
@@ -100,46 +100,46 @@ class DismissalAnalytics {
       LEFT JOIN users u ON dl.user_id = u.id
       WHERE 1=1
     `;
-    
+
     const params = [];
-    
+
     if (filters.startDate) {
       sql += ` AND DATE(dl.timestamp) >= DATE(?)`;
       params.push(filters.startDate);
     }
-    
+
     if (filters.endDate) {
       sql += ` AND DATE(dl.timestamp) <= DATE(?)`;
       params.push(filters.endDate);
     }
-    
+
     if (filters.action) {
       sql += ` AND dl.action = ?`;
       params.push(filters.action);
     }
-    
+
     if (filters.class) {
       sql += ` AND s.class = ?`;
       params.push(filters.class);
     }
-    
+
     if (filters.studentId) {
       sql += ` AND dl.student_id = ?`;
       params.push(filters.studentId);
     }
-    
+
     sql += ` ORDER BY dl.timestamp DESC`;
-    
+
     if (filters.limit) {
       sql += ` LIMIT ?`;
       params.push(filters.limit);
     }
-    
+
     if (filters.offset) {
       sql += ` OFFSET ?`;
       params.push(filters.offset);
     }
-    
+
     db.all(sql, params, callback);
   }
 
@@ -158,31 +158,31 @@ class DismissalAnalytics {
       LEFT JOIN users u ON dl.user_id = u.id
       WHERE 1=1
     `;
-    
+
     const params = [];
-    
+
     if (filters.startDate) {
       sql += ` AND DATE(dl.timestamp) >= DATE(?)`;
       params.push(filters.startDate);
     }
-    
+
     if (filters.endDate) {
       sql += ` AND DATE(dl.timestamp) <= DATE(?)`;
       params.push(filters.endDate);
     }
-    
+
     if (filters.action) {
       sql += ` AND dl.action = ?`;
       params.push(filters.action);
     }
-    
+
     if (filters.class) {
       sql += ` AND s.class = ?`;
       params.push(filters.class);
     }
-    
+
     sql += ` ORDER BY dl.timestamp DESC`;
-    
+
     db.all(sql, params, callback);
   }
 
@@ -195,31 +195,31 @@ class DismissalAnalytics {
       LEFT JOIN users u ON dl.user_id = u.id
       WHERE 1=1
     `;
-    
+
     const params = [];
-    
+
     if (filters.year) {
       sql += ` AND strftime('%Y', dl.timestamp) = ?`;
       params.push(filters.year.toString());
     }
-    
+
     if (filters.month) {
       sql += ` AND strftime('%m', dl.timestamp) = ?`;
       params.push(filters.month.toString().padStart(2, '0'));
     }
-    
+
     sql += ` ORDER BY dl.timestamp DESC`;
-    
+
     if (filters.limit) {
       sql += ` LIMIT ?`;
       params.push(filters.limit);
     }
-    
+
     if (filters.offset) {
       sql += ` OFFSET ?`;
       params.push(filters.offset);
     }
-    
+
     db.all(sql, params, callback);
   }
 }

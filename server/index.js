@@ -9,7 +9,9 @@ const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/students');
 const dismissalRoutes = require('./routes/dismissal');
 const userRoutes = require('./routes/users');
+const superadminRoutes = require('./routes/superadmin');
 const DismissalAnalytics = require('./models/DismissalAnalytics');
+const { initDatabase } = require('./config/database');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,6 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/dismissal', dismissalRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/superadmin', superadminRoutes);
 app.use('/api/analytics', require('./routes/analytics'));
 
 // Health check endpoint
@@ -53,6 +56,15 @@ app.get('*', (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Something went wrong!' });
+});
+
+// Run database initialization (migration + superadmin auto-creation) on startup
+initDatabase((err) => {
+  if (err) {
+    console.error('Database initialization error:', err.message);
+  } else {
+    console.log('✅ Database initialized and migrated successfully.');
+  }
 });
 
 console.log('Starting server...');

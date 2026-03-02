@@ -78,9 +78,10 @@ const soundUpload = multer({
   }
 });
 
-// Get all students
+// Get all students (scoped to school)
 router.get('/', authenticateToken, (req, res) => {
-  Student.getAll((err, students) => {
+  const school_id = req.user.school_id;
+  Student.getAll(school_id, (err, students) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching students' });
     }
@@ -88,11 +89,12 @@ router.get('/', authenticateToken, (req, res) => {
   });
 });
 
-// Get student by barcode
+// Get student by barcode (scoped to school)
 router.get('/barcode/:barcode', authenticateToken, (req, res) => {
   const { barcode } = req.params;
+  const school_id = req.user.school_id;
 
-  Student.findByBarcode(barcode, (err, student) => {
+  Student.findByBarcode(barcode, school_id, (err, student) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching student' });
     }
@@ -125,12 +127,13 @@ router.get('/:id', authenticateToken, (req, res) => {
 // Create new student (admin only)
 router.post('/', authenticateToken, requireAdmin, (req, res) => {
   const { barcode, name, class: className } = req.body;
+  const school_id = req.user.school_id;
 
   if (!barcode || !name || !className) {
     return res.status(400).json({ message: 'Barcode, name, and class are required' });
   }
 
-  Student.create({ barcode, name, class: className }, (err, student) => {
+  Student.create({ barcode, name, class: className, school_id }, (err, student) => {
     if (err) {
       if (err.message.includes('UNIQUE constraint failed')) {
         return res.status(400).json({ message: 'Barcode already exists' });
@@ -187,9 +190,10 @@ router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
   });
 });
 
-// Get available classes
+// Get available classes (scoped to school)
 router.get('/classes/available', authenticateToken, (req, res) => {
-  Student.getAvailableClasses((err, classes) => {
+  const school_id = req.user.school_id;
+  Student.getAvailableClasses(school_id, (err, classes) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching classes' });
     }
@@ -197,11 +201,12 @@ router.get('/classes/available', authenticateToken, (req, res) => {
   });
 });
 
-// Get students by class
+// Get students by class (scoped to school)
 router.get('/class/:className', authenticateToken, (req, res) => {
   const { className } = req.params;
+  const school_id = req.user.school_id;
 
-  Student.getByClass(className, (err, students) => {
+  Student.getByClass(className, school_id, (err, students) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching students' });
     }
@@ -209,11 +214,12 @@ router.get('/class/:className', authenticateToken, (req, res) => {
   });
 });
 
-// Search students by name
+// Search students by name (scoped to school)
 router.get('/search/:name', authenticateToken, (req, res) => {
   const { name } = req.params;
+  const school_id = req.user.school_id;
 
-  Student.searchByName(name, (err, students) => {
+  Student.searchByName(name, school_id, (err, students) => {
     if (err) {
       return res.status(500).json({ message: 'Error searching students' });
     }
@@ -236,13 +242,13 @@ router.post('/upload-csv', authenticateToken, requireAdmin, upload.single('csvFi
   let processedCount = 0;
 
   const stream = Readable.from(req.file.buffer.toString());
-  
+
   stream
     .pipe(csv())
     .on('data', (data) => {
       // Validate CSV row
       const { barcode, name, class: className } = data;
-      
+
       if (!barcode || !name || !className) {
         errors.push({
           row: processedCount + 1,
@@ -257,25 +263,26 @@ router.post('/upload-csv', authenticateToken, requireAdmin, upload.single('csvFi
     })
     .on('end', () => {
       if (results.length === 0) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: 'No valid student data found in CSV',
-          errors 
+          errors
         });
       }
 
       // Process all students
       const createdStudents = [];
       let completed = 0;
+      const school_id = req.user.school_id;
 
       results.forEach((studentData, index) => {
-        Student.create(studentData, (err, student) => {
+        Student.create({ ...studentData, school_id }, (err, student) => {
           processedCount++;
-          
+
           if (err) {
             errors.push({
               row: index + 1,
-              error: err.message.includes('UNIQUE constraint failed') 
-                ? 'Barcode already exists' 
+              error: err.message.includes('UNIQUE constraint failed')
+                ? 'Barcode already exists'
                 : 'Database error',
               data: studentData
             });
@@ -284,7 +291,7 @@ router.post('/upload-csv', authenticateToken, requireAdmin, upload.single('csvFi
           }
 
           completed++;
-          
+
           // When all processing is done
           if (completed === results.length) {
             res.status(201).json({
@@ -300,9 +307,9 @@ router.post('/upload-csv', authenticateToken, requireAdmin, upload.single('csvFi
       });
     })
     .on('error', (err) => {
-      res.status(500).json({ 
+      res.status(500).json({
         message: 'Error processing CSV file',
-        error: err.message 
+        error: err.message
       });
     });
 });
@@ -448,7 +455,7 @@ router.post('/:id/sound', authenticateToken, requireAdmin, soundUpload.single('s
   });
 
   // Generate sound URL using BACKEND_URL environment variable or default to localhost
-  const backendUrl = process.env.BACKEND_URL ;
+  const backendUrl = process.env.BACKEND_URL;
   const soundUrl = `${backendUrl}/api/students/sound/${req.file.filename}`;
 
   // Update student with sound URL using the dedicated sound update method

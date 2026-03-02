@@ -18,25 +18,24 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      // Verify token if it exists
       const verifyToken = async () => {
         try {
-          const payload = JSON.parse(atob(token.split('.')[1]));  // Decode JWT token to get user details
+          const payload = JSON.parse(atob(token.split('.')[1]));
           setUser({
             id: payload.id,
             username: payload.username,
             role: payload.role,
+            school_id: payload.school_id || null,
           });
         } catch (error) {
-          // If token is invalid, clear it and user data
           logout();
         } finally {
-          setLoading(false);  // Token verification done
+          setLoading(false);
         }
       };
       verifyToken();
     } else {
-      setLoading(false);  // No token, done checking
+      setLoading(false);
     }
   }, [token]);
 
@@ -61,6 +60,7 @@ export const AuthProvider = ({ children }) => {
 
   const isAdmin = () => user?.role === 'admin';
   const isTeacher = () => user?.role === 'teacher';
+  const isSuperAdmin = () => user?.role === 'superadmin';
 
   const value = {
     user,
@@ -70,6 +70,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     isAdmin,
     isTeacher,
+    isSuperAdmin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

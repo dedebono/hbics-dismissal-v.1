@@ -21,29 +21,38 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Check if user is admin
+// Check if user is admin OR superadmin
 const requireAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
+};
+
+// Check if user is superadmin only
+const requireSuperAdmin = (req, res, next) => {
+  if (req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'SuperAdmin access required' });
   }
   next();
 };
 
 // Check if user is teacher or admin
 const requireTeacherOrAdmin = (req, res, next) => {
-  if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
+  if (req.user.role !== 'teacher' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     return res.status(403).json({ message: 'Teacher or admin access required' });
   }
   next();
 };
 
-// Generate JWT token
+// Generate JWT token (includes school_id)
 const generateToken = (user) => {
   return jwt.sign(
-    { 
-      id: user.id, 
-      username: user.username, 
-      role: user.role 
+    {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      school_id: user.school_id || null
     },
     JWT_SECRET,
     { expiresIn: '8h' }
@@ -53,6 +62,7 @@ const generateToken = (user) => {
 module.exports = {
   authenticateToken,
   requireAdmin,
+  requireSuperAdmin,
   requireTeacherOrAdmin,
   generateToken,
   JWT_SECRET

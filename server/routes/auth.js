@@ -1,6 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
-const { generateToken, authenticateToken, requireAdmin } = require('../middleware/auth');
+const { generateToken, authenticateToken, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const { initDatabase } = require('../config/database');
 
 const router = express.Router();
@@ -22,16 +22,17 @@ router.post('/init', async (req, res) => {
       }
 
       if (!adminUser) {
-        // Create default admin user
+        // Create default admin user for Default School (id=1)
         User.create({
           username: 'admin',
           password: 'admin123',
-          role: 'admin'
+          role: 'admin',
+          school_id: 1
         }, (err, user) => {
           if (err) {
             return res.status(500).json({ message: 'Error creating admin user' });
           }
-          res.json({ 
+          res.json({
             message: 'Database initialized successfully',
             adminUser: { username: user.username, role: user.role }
           });
@@ -74,7 +75,8 @@ router.post('/login', (req, res) => {
       const token = generateToken({
         id: user.id,
         username: user.username,
-        role: user.role
+        role: user.role,
+        school_id: user.school_id || null
       });
 
       res.json({
@@ -83,7 +85,8 @@ router.post('/login', (req, res) => {
         user: {
           id: user.id,
           username: user.username,
-          role: user.role
+          role: user.role,
+          school_id: user.school_id || null
         }
       });
     });
@@ -92,16 +95,13 @@ router.post('/login', (req, res) => {
 
 // Get current user profile
 router.get('/profile', (req, res) => {
-  // This route should be protected by authentication middleware
-  // For now, it's just a placeholder
   res.json({ message: 'Profile endpoint - requires authentication' });
 });
 
 // Change password
 router.post('/change-password', (req, res) => {
-  // This would require authentication middleware
   const { currentPassword, newPassword } = req.body;
-  
+
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ message: 'Current and new password required' });
   }
@@ -109,30 +109,43 @@ router.post('/change-password', (req, res) => {
   res.json({ message: 'Password change endpoint - requires authentication' });
 });
 
-// Create user (protected - admin only)
+// Create user (admin: can create teachers/students in own school; superadmin: can create admins for any school)
 router.post('/create-user', authenticateToken, requireAdmin, (req, res) => {
-  const { username, password, role = 'teacher' } = req.body;
+  const { username, password, role = 'teacher', school_id } = req.body;
 
   // Validate input
   if (!username || !password) {
-    return res.status(400).json({ 
-      message: 'Username and password are required' 
+    return res.status(400).json({
+      message: 'Username and password are required'
     });
   }
 
   if (password.length < 6) {
-    return res.status(400).json({ 
-      message: 'Password must be at least 6 characters long' 
+    return res.status(400).json({
+      message: 'Password must be at least 6 characters long'
     });
   }
 
-  // Validate role
-  const validRoles = ['admin', 'teacher', 'student'];
-  if (!validRoles.includes(role)) {
-    return res.status(400).json({ 
-      message: 'Invalid role. Must be either "admin" or "teacher" or "student"' 
-    });
+  // Role validation based on who is creating
+  if (req.user.role === 'superadmin') {
+    const validRoles = ['admin', 'teacher', 'student', 'educs'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+  } else {
+    // Regular admin can only create non-admin users in own school
+    const validRoles = ['teacher', 'student', 'educs'];
+    if (!validRoles.includes(role)) {
+      return res.status(403).json({
+        message: 'Admins can only create teacher, student or educs accounts'
+      });
+    }
   }
+
+  // Determine school_id to use
+  const targetSchoolId = req.user.role === 'superadmin'
+    ? (school_id || null)
+    : req.user.school_id;
 
   // Check if username already exists
   User.findByUsername(username, (err, existingUser) => {
@@ -141,8 +154,8 @@ router.post('/create-user', authenticateToken, requireAdmin, (req, res) => {
     }
 
     if (existingUser) {
-      return res.status(409).json({ 
-        message: 'Username already exists' 
+      return res.status(409).json({
+        message: 'Username already exists'
       });
     }
 
@@ -150,12 +163,13 @@ router.post('/create-user', authenticateToken, requireAdmin, (req, res) => {
     User.create({
       username,
       password,
-      role
+      role,
+      school_id: targetSchoolId
     }, (err, user) => {
       if (err) {
-        return res.status(500).json({ 
+        return res.status(500).json({
           message: 'Error creating user',
-          error: err.message 
+          error: err.message
         });
       }
 
@@ -165,6 +179,7 @@ router.post('/create-user', authenticateToken, requireAdmin, (req, res) => {
           id: user.id,
           username: user.username,
           role: user.role,
+          school_id: user.school_id,
           created_at: new Date().toISOString()
         }
       });

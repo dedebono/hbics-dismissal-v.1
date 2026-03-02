@@ -8,8 +8,9 @@ import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
-import EducsDashboard from './pages/EducsDashboard'; // Import EducsDashboard
+import EducsDashboard from './pages/EducsDashboard';
 import DismissalLogs from './pages/DismissalLogs';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import './App.css';
 
 function App() {
@@ -26,6 +27,14 @@ function App() {
             <Route
               path="/dashboard"
               element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+            />
+            <Route
+              path="/superadmin"
+              element={
+                <ProtectedRoute roles={['superadmin']}>
+                  <SuperAdminDashboard />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/admin"

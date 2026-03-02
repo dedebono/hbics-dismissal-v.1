@@ -6,16 +6,16 @@ const { broadcast } = require('../websocket');
 
 const router = express.Router();
 
-// Check in student by barcode
+// Check in student by barcode (scoped to school)
 router.post('/check-in', authenticateToken, (req, res) => {
   const { barcode } = req.body;
+  const school_id = req.user.school_id;
 
   if (!barcode) {
     return res.status(400).json({ message: 'Barcode is required' });
   }
 
-  // First find the student by barcode
-  Student.findByBarcode(barcode, (err, student) => {
+  Student.findByBarcode(barcode, school_id, (err, student) => {
     if (err) {
       return res.status(500).json({ message: 'Error finding student' });
     }
@@ -24,8 +24,7 @@ router.post('/check-in', authenticateToken, (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Check in the student
-    Dismissal.checkIn(student.id, (err, result) => {
+    Dismissal.checkIn(student.id, school_id, (err, result) => {
       if (err) {
         return res.status(500).json({ message: 'Error checking in student' });
       }
@@ -34,8 +33,8 @@ router.post('/check-in', authenticateToken, (req, res) => {
         return res.status(400).json({ message: 'Student is already checked in' });
       }
 
-      // Broadcast the new active students list
-      Dismissal.getActiveStudents((err, activeStudents) => {
+      // Broadcast the new active students list (scoped)
+      Dismissal.getActiveStudents(school_id, (err, activeStudents) => {
         if (!err) {
           broadcast({ type: 'active_students', payload: activeStudents });
         }
@@ -55,16 +54,16 @@ router.post('/check-in', authenticateToken, (req, res) => {
   });
 });
 
-// Check out student by barcode
+// Check out student by barcode (scoped to school)
 router.post('/check-out', authenticateToken, (req, res) => {
   const { barcode } = req.body;
+  const school_id = req.user.school_id;
 
   if (!barcode) {
     return res.status(400).json({ message: 'Barcode is required' });
   }
 
-  // First find the student by barcode
-  Student.findByBarcode(barcode, (err, student) => {
+  Student.findByBarcode(barcode, school_id, (err, student) => {
     if (err) {
       return res.status(500).json({ message: 'Error finding student' });
     }
@@ -73,8 +72,7 @@ router.post('/check-out', authenticateToken, (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Check out the student
-    Dismissal.checkOut(student.id, (err, result) => {
+    Dismissal.checkOut(student.id, school_id, (err, result) => {
       if (err) {
         return res.status(500).json({ message: 'Error checking out student' });
       }
@@ -83,8 +81,8 @@ router.post('/check-out', authenticateToken, (req, res) => {
         return res.status(400).json({ message: 'Student is not checked in' });
       }
 
-      // Broadcast the new active students list
-      Dismissal.getActiveStudents((err, activeStudents) => {
+      // Broadcast the updated active students list (scoped)
+      Dismissal.getActiveStudents(school_id, (err, activeStudents) => {
         if (!err) {
           broadcast({ type: 'active_students', payload: activeStudents });
         }
@@ -104,9 +102,10 @@ router.post('/check-out', authenticateToken, (req, res) => {
   });
 });
 
-// Get all active students
+// Get all active students (scoped to school)
 router.get('/active', authenticateToken, (req, res) => {
-  Dismissal.getActiveStudents((err, activeStudents) => {
+  const school_id = req.user.school_id;
+  Dismissal.getActiveStudents(school_id, (err, activeStudents) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching active students' });
     }
@@ -114,12 +113,12 @@ router.get('/active', authenticateToken, (req, res) => {
   });
 });
 
-// Get dismissal logs
+// Get dismissal logs (scoped to school)
 router.get('/logs', authenticateToken, (req, res) => {
-  // If no limit is provided, return all logs
+  const school_id = req.user.school_id;
   const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
-  
-  Dismissal.getDismissalLogs(limit, (err, logs) => {
+
+  Dismissal.getDismissalLogs(school_id, limit, (err, logs) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching dismissal logs' });
     }
@@ -127,11 +126,12 @@ router.get('/logs', authenticateToken, (req, res) => {
   });
 });
 
-// Get today\'s activity
-router.get('/today', authenticateToken,requireTeacherOrAdmin, (req, res) => {
-  Dismissal.getTodayActivity((err, activity) => {
+// Get today's activity (scoped to school)
+router.get('/today', authenticateToken, requireTeacherOrAdmin, (req, res) => {
+  const school_id = req.user.school_id;
+  Dismissal.getTodayActivity(school_id, (err, activity) => {
     if (err) {
-      return res.status(500).json({ message: 'Error fetching today\'s activity' });
+      return res.status(500).json({ message: "Error fetching today's activity" });
     }
     res.json(activity);
   });
@@ -150,14 +150,14 @@ router.get('/history/:studentId', authenticateToken, (req, res) => {
   });
 });
 
-// Clear all active students (admin only)
+// Clear all active students for this school
 router.delete('/active/clear', authenticateToken, (req, res) => {
-  Dismissal.clearAllActive((err, result) => {
+  const school_id = req.user.school_id;
+  Dismissal.clearAllActive(school_id, (err, result) => {
     if (err) {
       return res.status(500).json({ message: 'Error clearing active students' });
     }
 
-    // Broadcast the empty active students list
     broadcast({ type: 'active_students', payload: [] });
 
     res.json({
@@ -170,6 +170,7 @@ router.delete('/active/clear', authenticateToken, (req, res) => {
 // Clear a single active student
 router.delete('/active/:studentId', authenticateToken, (req, res) => {
   const { studentId } = req.params;
+  const school_id = req.user.school_id;
 
   Dismissal.clearSingleActive(studentId, (err, result) => {
     if (err) {
@@ -180,8 +181,7 @@ router.delete('/active/:studentId', authenticateToken, (req, res) => {
       return res.status(404).json({ message: 'Student not found in active list' });
     }
 
-    // Broadcast the updated active students list
-    Dismissal.getActiveStudents((err, activeStudents) => {
+    Dismissal.getActiveStudents(school_id, (err, activeStudents) => {
       if (!err) {
         broadcast({ type: 'active_students', payload: activeStudents });
       }
@@ -194,11 +194,12 @@ router.delete('/active/:studentId', authenticateToken, (req, res) => {
   });
 });
 
-// Check student status by barcode
+// Check student status by barcode (scoped to school)
 router.get('/status/:barcode', authenticateToken, (req, res) => {
   const { barcode } = req.params;
+  const school_id = req.user.school_id;
 
-  Student.findByBarcode(barcode, (err, student) => {
+  Student.findByBarcode(barcode, school_id, (err, student) => {
     if (err) {
       return res.status(500).json({ message: 'Error finding student' });
     }
@@ -207,10 +208,9 @@ router.get('/status/:barcode', authenticateToken, (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Check if student is active
     const checkActiveSql = `SELECT * FROM active_students WHERE student_id = ?`;
     const db = require('../config/database').db;
-    
+
     db.get(checkActiveSql, [student.id], (err, activeRow) => {
       if (err) {
         return res.status(500).json({ message: 'Error checking student status' });

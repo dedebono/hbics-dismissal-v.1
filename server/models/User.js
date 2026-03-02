@@ -4,10 +4,10 @@ const { db } = require('../config/database');
 class User {
   // Create a new user
   static create(userData, callback) {
-    const { username, password, role = 'teacher' } = userData;
+    const { username, password, role = 'teacher', school_id = null } = userData;
 
     // Validate role
-    const validRoles = ['admin', 'teacher', 'student', 'educs'];
+    const validRoles = ['superadmin', 'admin', 'teacher', 'student', 'educs'];
     if (!validRoles.includes(role)) {
       return callback(new Error('Invalid role'));
     }
@@ -15,10 +15,10 @@ class User {
     bcrypt.hash(password, 10, (err, hashedPassword) => {
       if (err) return callback(err);
 
-      const sql = `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`;
-      db.run(sql, [username, hashedPassword, role], function(err) {
+      const sql = `INSERT INTO users (username, password, role, school_id) VALUES (?, ?, ?, ?)`;
+      db.run(sql, [username, hashedPassword, role, school_id], function (err) {
         if (err) return callback(err);
-        callback(null, { id: this.lastID, username, role });
+        callback(null, { id: this.lastID, username, role, school_id });
       });
     });
   }
@@ -34,7 +34,7 @@ class User {
 
   // Find user by ID
   static findById(id, callback) {
-    const sql = `SELECT id, username, role, created_at FROM users WHERE id = ?`;
+    const sql = `SELECT id, username, role, school_id, created_at FROM users WHERE id = ?`;
     db.get(sql, [id], (err, row) => {
       if (err) return callback(err);
       callback(null, row);
@@ -49,10 +49,30 @@ class User {
     });
   }
 
-  // Get all users (for admin)
+  // Get all users (superadmin only — returns all)
   static getAll(callback) {
-    const sql = `SELECT id, username, role, created_at FROM users ORDER BY created_at DESC`;
+    const sql = `
+      SELECT u.id, u.username, u.role, u.school_id, u.created_at, s.name AS school_name
+      FROM users u
+      LEFT JOIN schools s ON u.school_id = s.id
+      ORDER BY u.created_at DESC
+    `;
     db.all(sql, [], (err, rows) => {
+      if (err) return callback(err);
+      callback(null, rows);
+    });
+  }
+
+  // Get users scoped to a specific school (for regular admins)
+  static getAllBySchool(school_id, callback) {
+    const sql = `
+      SELECT u.id, u.username, u.role, u.school_id, u.created_at, s.name AS school_name
+      FROM users u
+      LEFT JOIN schools s ON u.school_id = s.id
+      WHERE u.school_id = ?
+      ORDER BY u.created_at DESC
+    `;
+    db.all(sql, [school_id], (err, rows) => {
       if (err) return callback(err);
       callback(null, rows);
     });
@@ -60,22 +80,34 @@ class User {
 
   // Update user role
   static updateRole(userId, newRole, callback) {
-    const validRoles = ['teacher', 'student', 'educs'];
+    const validRoles = ['admin', 'teacher', 'student', 'educs'];
     if (!validRoles.includes(newRole)) {
       return callback(new Error('Invalid role'));
     }
 
     const sql = `UPDATE users SET role = ? WHERE id = ?`;
-    db.run(sql, [newRole, userId], function(err) {
+    db.run(sql, [newRole, userId], function (err) {
       if (err) return callback(err);
       callback(null, { changes: this.changes });
+    });
+  }
+
+  // Update password
+  static updatePassword(userId, newPassword, callback) {
+    bcrypt.hash(newPassword, 10, (err, hashedPassword) => {
+      if (err) return callback(err);
+      const sql = `UPDATE users SET password = ? WHERE id = ?`;
+      db.run(sql, [hashedPassword, userId], function (err) {
+        if (err) return callback(err);
+        callback(null, { changes: this.changes });
+      });
     });
   }
 
   // Delete user
   static delete(userId, callback) {
     const sql = `DELETE FROM users WHERE id = ?`;
-    db.run(sql, [userId], function(err) {
+    db.run(sql, [userId], function (err) {
       if (err) return callback(err);
       callback(null, { changes: this.changes });
     });

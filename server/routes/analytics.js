@@ -7,8 +7,9 @@ const router = express.Router();
 // Get daily statistics
 router.get('/daily-stats/:date', authenticateToken, requireTeacherOrAdmin, (req, res) => {
   const { date } = req.params;
-  
-  DismissalAnalytics.getDailyStats(date, (err, stats) => {
+  const school_id = req.user.school_id;
+
+  DismissalAnalytics.getDailyStats(date, school_id, (err, stats) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching daily statistics' });
     }
@@ -19,12 +20,13 @@ router.get('/daily-stats/:date', authenticateToken, requireTeacherOrAdmin, (req,
 // Get weekly statistics
 router.get('/weekly-stats', authenticateToken, requireTeacherOrAdmin, (req, res) => {
   const { startDate, endDate } = req.query;
-  
+  const school_id = req.user.school_id;
+
   if (!startDate || !endDate) {
     return res.status(400).json({ message: 'startDate and endDate are required' });
   }
 
-  DismissalAnalytics.getWeeklyStats(startDate, endDate, (err, stats) => {
+  DismissalAnalytics.getWeeklyStats(startDate, endDate, school_id, (err, stats) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching weekly statistics' });
     }
@@ -35,8 +37,9 @@ router.get('/weekly-stats', authenticateToken, requireTeacherOrAdmin, (req, res)
 // Get class-based statistics
 router.get('/class-stats/:date', authenticateToken, requireTeacherOrAdmin, (req, res) => {
   const { date } = req.params;
-  
-  DismissalAnalytics.getClassStats(date, (err, stats) => {
+  const school_id = req.user.school_id;
+
+  DismissalAnalytics.getClassStats(date, school_id, (err, stats) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching class statistics' });
     }
@@ -47,7 +50,7 @@ router.get('/class-stats/:date', authenticateToken, requireTeacherOrAdmin, (req,
 // Get peak hours analysis
 router.get('/peak-hours/:date', authenticateToken, requireTeacherOrAdmin, (req, res) => {
   const { date } = req.params;
-  
+
   DismissalAnalytics.getPeakHours(date, (err, stats) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching peak hours data' });
@@ -60,7 +63,7 @@ router.get('/peak-hours/:date', authenticateToken, requireTeacherOrAdmin, (req, 
 router.get('/student-summary/:studentId', authenticateToken, requireTeacherOrAdmin, (req, res) => {
   const { studentId } = req.params;
   const { startDate, endDate } = req.query;
-  
+
   if (!startDate || !endDate) {
     return res.status(400).json({ message: 'startDate and endDate are required' });
   }
@@ -106,7 +109,7 @@ router.get('/export-logs', authenticateToken, requireTeacherOrAdmin, (req, res) 
     if (err) {
       return res.status(500).json({ message: 'Error exporting logs' });
     }
-    
+
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="dismissal_logs.csv"');
     res.send(logs);

@@ -39,124 +39,109 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  login: (username, password) => 
+  login: (username, password) =>
     api.post('/auth/login', { username, password }),
-  
-  init: () => 
+  init: () =>
     api.post('/auth/init'),
 };
 
 // Students API
 export const studentsAPI = {
-  getAll: () => 
+  getAll: () =>
     api.get('/students'),
-  
-  getByBarcode: (barcode) => 
+  getByBarcode: (barcode) =>
     api.get(`/students/barcode/${barcode}`),
-  
-  getById: (id) => 
+  getById: (id) =>
     api.get(`/students/${id}`),
-  
-  create: (studentData) => 
+  create: (studentData) =>
     api.post('/students', studentData),
-  
-  update: (id, studentData) => 
+  update: (id, studentData) =>
     api.put(`/students/${id}`, studentData),
-  
-  delete: (id) => 
+  delete: (id) =>
     api.delete(`/students/${id}`),
-  
-  getClasses: () => 
+  getClasses: () =>
     api.get('/students/classes/available'),
-  
-  getByClass: (className) => 
+  getByClass: (className) =>
     api.get(`/students/class/${className}`),
-  
-  search: (name) => 
+  search: (name) =>
     api.get(`/students/search/${name}`),
-  
-  uploadCSV: (formData) => 
+  uploadCSV: (formData) =>
     api.post('/students/upload-csv', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     }),
-
   uploadPhoto: (id, formData) =>
     api.post(`/students/${id}/photo`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     }),
-
   deletePhoto: (id) =>
     api.delete(`/students/${id}/photo`),
-
   getPhotoUrl: (filename) =>
     `${API_BASE_URL}/students/photo/${filename}`,
-
   uploadSound: (id, formData) =>
     api.post(`/students/${id}/sound`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     }),
-
   deleteSound: (id) =>
     api.delete(`/students/${id}/sound`),
-
   getSoundUrl: (filename) =>
     `${API_BASE_URL}/students/sound/${filename}`,
 };
 
-  
 // Dismissal API
 export const dismissalAPI = {
-  checkIn: (barcode) => 
+  checkIn: (barcode) =>
     api.post('/dismissal/check-in', { barcode }),
-  
-  checkOut: (barcode) => 
+  checkOut: (barcode) =>
     api.post('/dismissal/check-out', { barcode }),
-  
-  getActive: () => 
+  getActive: () =>
     api.get('/dismissal/active'),
-  
-  // If no limit is provided, fetch all logs
   getLogs: (limit) => {
     const query = Number.isFinite(limit) ? `?limit=${limit}` : '';
     return api.get(`/dismissal/logs${query}`);
   },
-  
-  getToday: () => 
+  getToday: () =>
     api.get('/dismissal/today'),
-  
-  getHistory: (studentId, limit = 20) => 
+  getHistory: (studentId, limit = 20) =>
     api.get(`/dismissal/history/${studentId}?limit=${limit}`),
-  
   clearActive: () =>
     api.delete('/dismissal/active/clear'),
-
   clearSingleActive: (studentId) =>
     api.delete(`/dismissal/active/${studentId}`),
-  
-  getStatus: (barcode) => 
+  getStatus: (barcode) =>
     api.get(`/dismissal/status/${barcode}`),
 };
 
 // Users API
 export const usersAPI = {
-  getAll: () => 
+  getAll: () =>
     api.get('/users'),
-  
-  getById: (id) => 
+  getById: (id) =>
     api.get(`/users/${id}`),
-  
-  create: (userData) => 
+  create: (userData) =>
     api.post('/auth/create-user', userData),
-  
-  delete: (id) => 
+  delete: (id) =>
     api.delete(`/users/${id}`),
 };
 
+// SuperAdmin API
+export const superadminAPI = {
+  // Schools
+  getSchools: () =>
+    api.get('/superadmin/schools'),
+  createSchool: (name) =>
+    api.post('/superadmin/schools', { name }),
+  deleteSchool: (id) =>
+    api.delete(`/superadmin/schools/${id}`),
+
+  // Admins
+  getAdmins: () =>
+    api.get('/superadmin/admins'),
+  createAdmin: (data) =>
+    api.post('/superadmin/admins', data),
+  deleteAdmin: (id) =>
+    api.delete(`/superadmin/admins/${id}`),
+  resetPassword: (id, newPassword) =>
+    api.put(`/superadmin/admins/${id}/reset-password`, { newPassword }),
+};
 
 export default api;
