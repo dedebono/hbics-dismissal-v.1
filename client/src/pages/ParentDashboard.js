@@ -168,7 +168,7 @@ const ParentDashboard = () => {
             <header className="student-header">
                 <div className="header-content">
                     <div>
-                        <h2>Parent Arrival Scanner ({currentTime} WITA)</h2>
+                        <h2>Arrival Scanner ({currentTime} WITA)</h2>
                         <h3>Scan student barcode to record arrival</h3>
                     </div>
 
