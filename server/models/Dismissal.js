@@ -132,6 +132,32 @@ class Dismissal {
     });
   }
 
+  // Record student arrival (parents scan) — no active_students entry, just a log
+  static recordArrival(studentId, school_id, callback) {
+    // Check if already recorded today (local date comparison via SQLite DATE)
+    const checkSql = `
+      SELECT id FROM dismissal_logs
+      WHERE student_id = ? AND action = 'arrival'
+        AND DATE(timestamp, '+8 hours') = DATE('now', '+8 hours')
+      LIMIT 1
+    `;
+    db.get(checkSql, [studentId], (err, row) => {
+      if (err) return callback(err);
+      if (row) {
+        return callback(null, { alreadyArrived: true });
+      }
+      const logSql = `INSERT INTO dismissal_logs (student_id, action, school_id) VALUES (?, 'arrival', ?)`;
+      db.run(logSql, [studentId, school_id], function (err) {
+        if (err) return callback(err);
+        callback(null, {
+          recorded: true,
+          logId: this.lastID,
+          timestamp: new Date().toISOString()
+        });
+      });
+    });
+  }
+
   // Clear a single active student
   static clearSingleActive(studentId, callback) {
     const sql = `DELETE FROM active_students WHERE student_id = ?`;

@@ -54,6 +54,9 @@ const Login = () => {
       } else if (userRole === 'educs') {
         console.log('Redirecting to educs dashboard');
         navigate('/educs');
+      } else if (userRole === 'parents') {
+        console.log('Redirecting to parent dashboard');
+        navigate('/parent');
       }
     } else {
       console.log('Login failed:', result.message);

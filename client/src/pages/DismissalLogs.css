@@ -147,6 +147,11 @@
   color: white;
 }
 
+.action-arrival {
+  background-color: #1abc9c;
+  color: white;
+}
+
 .action-default {
   background-color: #95a5a6;
   color: white;

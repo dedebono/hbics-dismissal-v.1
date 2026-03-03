@@ -109,6 +109,8 @@ export const dismissalAPI = {
     api.delete(`/dismissal/active/${studentId}`),
   getStatus: (barcode) =>
     api.get(`/dismissal/status/${barcode}`),
+  recordArrival: (barcode) =>
+    api.post('/dismissal/arrival', { barcode }),
 };
 
 // Users API
@@ -121,6 +123,8 @@ export const usersAPI = {
     api.post('/auth/create-user', userData),
   delete: (id) =>
     api.delete(`/users/${id}`),
+  updatePassword: (id, newPassword) =>
+    api.put(`/users/${id}/password`, { newPassword }),
 };
 
 // SuperAdmin API

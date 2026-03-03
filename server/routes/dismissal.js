@@ -230,4 +230,39 @@ router.get('/status/:barcode', authenticateToken, (req, res) => {
   });
 });
 
+// Record student arrival (scoped to school) — for parents role
+router.post('/arrival', authenticateToken, (req, res) => {
+  const { barcode } = req.body;
+  const school_id = req.user.school_id;
+
+  if (!barcode) {
+    return res.status(400).json({ message: 'Barcode is required' });
+  }
+
+  Student.findByBarcode(barcode, school_id, (err, student) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error finding student' });
+    }
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    Dismissal.recordArrival(student.id, school_id, (err, result) => {
+      if (err) {
+        return res.status(500).json({ message: 'Error recording arrival' });
+      }
+
+      if (result.alreadyArrived) {
+        return res.status(409).json({ message: 'Student arrival already recorded today' });
+      }
+
+      res.json({
+        message: 'Arrival recorded successfully',
+        timestamp: result.timestamp
+      });
+    });
+  });
+});
+
 module.exports = router;

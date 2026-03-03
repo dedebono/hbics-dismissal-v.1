@@ -128,16 +128,16 @@ router.post('/create-user', authenticateToken, requireAdmin, (req, res) => {
 
   // Role validation based on who is creating
   if (req.user.role === 'superadmin') {
-    const validRoles = ['admin', 'teacher', 'student', 'educs'];
+    const validRoles = ['admin', 'teacher', 'student', 'educs', 'parents'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ message: 'Invalid role' });
     }
   } else {
     // Regular admin can only create non-admin users in own school
-    const validRoles = ['teacher', 'student', 'educs'];
+    const validRoles = ['teacher', 'student', 'educs', 'parents'];
     if (!validRoles.includes(role)) {
       return res.status(403).json({
-        message: 'Admins can only create teacher, student or educs accounts'
+        message: 'Admins can only create teacher, student, educs or parents accounts'
       });
     }
   }

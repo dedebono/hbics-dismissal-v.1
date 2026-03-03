@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { studentsAPI, dismissalAPI, usersAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -54,6 +54,12 @@ const AdminDashboard = () => {
     role: 'teacher',
   });
   const [creatingUser, setCreatingUser] = useState(false);
+
+  // Change-password modal state
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [changePasswordTarget, setChangePasswordTarget] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Track which student is being check-in’d to disable the button
   const [checkingInId, setCheckingInId] = useState(null);
@@ -420,15 +426,45 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteUser = async (user) => {
-    if (window.confirm(`Are you sure you want to delete user ${user.username}?`)) {
+  const handleDeleteUser = async (targetUser) => {
+    // Frontend safety — backend also blocks this
+    if (targetUser.id === user?.id) {
+      toast.error('You cannot delete your own account');
+      return;
+    }
+    if (window.confirm(`Are you sure you want to delete user ${targetUser.username}?`)) {
       try {
-        await usersAPI.delete(user.id);
+        await usersAPI.delete(targetUser.id);
         toast.success('User deleted successfully');
         fetchUsers();
       } catch (error) {
-        toast.error('Error deleting user');
+        toast.error(error.response?.data?.message || 'Error deleting user');
       }
+    }
+  };
+
+  const handleChangePassword = (targetUser) => {
+    setChangePasswordTarget(targetUser);
+    setNewPassword('');
+    setShowChangePasswordModal(true);
+  };
+
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await usersAPI.updatePassword(changePasswordTarget.id, newPassword);
+      toast.success('Password updated successfully');
+      setShowChangePasswordModal(false);
+      setNewPassword('');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error updating password');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -599,6 +635,8 @@ const AdminDashboard = () => {
             loadingUsers={loadingUsers}
             handleAddUser={handleAddUser}
             handleDeleteUser={handleDeleteUser}
+            handleChangePassword={handleChangePassword}
+            currentUser={user}
           />
         )}
         {activeTab === 'dismissalLogs' && <DismissalLogs />}
@@ -873,6 +911,7 @@ const AdminDashboard = () => {
                     <option value="teacher">Teacher</option>
                     <option value="student">Student</option>
                     <option value="admin">Admin</option>
+                    <option value="parents">Parents</option>
                   </select>
                 </div>
               </div>
@@ -882,6 +921,51 @@ const AdminDashboard = () => {
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={creatingUser}>
                   {creatingUser ? 'Creating...' : 'Add User'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePasswordModal && changePasswordTarget && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h3>Change Password — {changePasswordTarget.username}</h3>
+              <button onClick={() => setShowChangePasswordModal(false)} className="modal-close">
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handlePasswordUpdate}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>New Password:</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setShowChangePasswordModal(false)}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={changingPassword}
+                >
+                  {changingPassword ? 'Saving...' : 'Update Password'}
                 </button>
               </div>
             </form>

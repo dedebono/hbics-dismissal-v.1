@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { dismissalAPI } from '../services/api';
 import './DismissalLogs.css';
 import moment from 'moment-timezone';
@@ -128,6 +128,8 @@ const fetchLogs = async () => {
         return 'action-checkin';
       case 'check_out':
         return 'action-checkout';
+      case 'arrival':
+        return 'action-arrival';
       default:
         return 'action-default';
     }
@@ -192,6 +194,8 @@ const exportToJSON = () => {
         return 'Check In';
       case 'check_out':
         return 'Check Out';
+      case 'arrival':
+        return 'Arrival';
       default:
         return action;
     }
@@ -264,6 +268,7 @@ const exportToJSON = () => {
             <option value="all">All Actions</option>
             <option value="check_in">Check In</option>
             <option value="check_out">Check Out</option>
+            <option value="arrival">Arrival</option>
           </select>
         </div>
 

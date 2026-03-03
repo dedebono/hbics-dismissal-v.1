@@ -11,6 +11,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import EducsDashboard from './pages/EducsDashboard';
 import DismissalLogs from './pages/DismissalLogs';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import ParentDashboard from './pages/ParentDashboard';
 import './App.css';
 
 function App() {
@@ -51,6 +52,10 @@ function App() {
             <Route
               path="/logs"
               element={<ProtectedRoute roles={['admin']}><DismissalLogs /></ProtectedRoute>}
+            />
+            <Route
+              path="/parent"
+              element={<ProtectedRoute roles={['parents']}><ParentDashboard /></ProtectedRoute>}
             />
 
             {/* Fallback route - redirect to login or dashboard based on auth */}

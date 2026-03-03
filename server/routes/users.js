@@ -100,4 +100,33 @@ router.delete('/:id', authenticateToken, requireAdmin, (req, res) => {
   });
 });
 
+// Change own password (admin can only change their own)
+router.put('/:id/password', authenticateToken, requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.id);
+  const { newPassword } = req.body;
+
+  if (isNaN(userId)) {
+    return res.status(400).json({ message: 'Invalid user ID' });
+  }
+
+  // Admin can only change their own password
+  if (req.user.role === 'admin' && userId !== req.user.id) {
+    return res.status(403).json({ message: 'You can only change your own password' });
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters' });
+  }
+
+  User.updatePassword(userId, newPassword, (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error updating password', error: err.message });
+    }
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: 'Password updated successfully' });
+  });
+});
+
 module.exports = router;
