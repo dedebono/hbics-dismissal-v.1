@@ -58,9 +58,9 @@ function App() {
               element={<ProtectedRoute roles={['parents']}><ParentDashboard /></ProtectedRoute>}
             />
 
-            {/* Fallback route - redirect to login or dashboard based on auth */}
+            {/* Fallback route - redirect to dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>
       </SocketProvider>

@@ -109,6 +109,23 @@ class Dismissal {
     });
   }
 
+  // Get today's arrivals (scoped to school)
+  static getTodayArrivals(school_id, callback) {
+    const sql = `
+      SELECT dl.id as log_id, dl.timestamp as checked_in_at, s.id, s.name, s.class, s.barcode
+      FROM dismissal_logs dl
+      INNER JOIN students s ON dl.student_id = s.id
+      WHERE dl.school_id = ? 
+        AND dl.action = 'arrival' 
+        AND DATE(dl.timestamp, '+8 hours') = DATE('now', '+8 hours')
+      ORDER BY dl.timestamp DESC
+    `;
+    db.all(sql, [school_id], (err, rows) => {
+      if (err) return callback(err);
+      callback(null, rows);
+    });
+  }
+
   // Get student dismissal history
   static getStudentHistory(studentId, limit = 20, callback) {
     const sql = `

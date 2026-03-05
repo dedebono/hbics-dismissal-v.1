@@ -101,6 +101,8 @@ export const dismissalAPI = {
   },
   getToday: () =>
     api.get('/dismissal/today'),
+  getTodayArrivals: () =>
+    api.get('/dismissal/today-arrivals'),
   getHistory: (studentId, limit = 20) =>
     api.get(`/dismissal/history/${studentId}?limit=${limit}`),
   clearActive: () =>

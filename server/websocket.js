@@ -5,7 +5,7 @@ let io;
 function createWebSocketServer(server) {
   io = new Server(server, {
     cors: {
-      origin: process.env.REACT_APP_WEBSOCKET_URL ? new URL(process.env.REACT_APP_WEBSOCKET_URL).origin : 'http://localhost:3000',
+      origin: "*",
       methods: ["GET", "POST"]
     }
   });

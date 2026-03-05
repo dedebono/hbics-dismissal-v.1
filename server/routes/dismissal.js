@@ -137,6 +137,17 @@ router.get('/today', authenticateToken, requireTeacherOrAdmin, (req, res) => {
   });
 });
 
+// Get today's arrivals (scoped to school)
+router.get('/today-arrivals', authenticateToken, (req, res) => {
+  const school_id = req.user.school_id;
+  Dismissal.getTodayArrivals(school_id, (err, arrivals) => {
+    if (err) {
+      return res.status(500).json({ message: "Error fetching today's arrivals" });
+    }
+    res.json(arrivals);
+  });
+});
+
 // Get student dismissal history
 router.get('/history/:studentId', authenticateToken, (req, res) => {
   const { studentId } = req.params;
@@ -256,6 +267,12 @@ router.post('/arrival', authenticateToken, (req, res) => {
       if (result.alreadyArrived) {
         return res.status(409).json({ message: 'Student arrival already recorded today' });
       }
+
+      Dismissal.getTodayArrivals(school_id, (err, arrivals) => {
+        if (!err) {
+          broadcast({ type: 'today_arrivals', payload: arrivals });
+        }
+      });
 
       res.json({
         message: 'Arrival recorded successfully',
