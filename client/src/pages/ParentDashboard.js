@@ -366,8 +366,8 @@ const ParentDashboard = () => {
     return (
         <div className="student-dashboard">
             <header className="student-header">
-                <div className="header-content">
-                    <div>
+                <div className="header-content parent-dashboard-header">
+                    <div className="header-titles">
                         <h2>Arrival Scanner ({currentTime} WITA)</h2>
                         <h3>Arrived Students ({visibleStudents.length}{selectedClass !== 'ALL' ? ` / ${activeStudents.length}` : ''})</h3>
                     </div>
@@ -387,38 +387,40 @@ const ParentDashboard = () => {
                         </select>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <form onSubmit={handleBarcodeSubmit} className="scanner-form" style={{ gap: '1rem', margin: 0 }}>
+                    <div className="scanner-container">
+                        <form onSubmit={handleBarcodeSubmit} className="scanner-form" style={{ margin: 0 }}>
                             <div className="form-group" style={{ margin: 0 }}>
                                 <input
                                     ref={barcodeInputRef}
                                     type="text"
                                     value={barcode}
                                     onChange={(e) => setBarcode(e.target.value)}
-                                    placeholder="Scan or enter barcode"
+                                    placeholder="Scan barcode"
                                     disabled={loading}
                                     autoFocus
-                                    className="barcode-input"
-                                    style={{ margin: 0, height: '3rem', width: '250px', minWidth: 'auto' }}
+                                    className="barcode-input parent-barcode-input"
+                                    style={{ margin: 0, height: '3rem', width: '280px', minWidth: 'auto' }}
                                 />
                             </div>
-                            <button
-                                type="submit"
-                                disabled={loading || !barcode.trim()}
-                                className="btn btn-primary scanner-btn"
-                                style={{ height: '3rem', padding: '0 24px', minWidth: 'auto', fontSize: '1.1rem', margin: 0 }}
-                            >
-                                {loading ? 'Processing...' : 'Submit'}
-                            </button>
+                            <div className="action-buttons" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                                <button
+                                    type="submit"
+                                    disabled={loading || !barcode.trim()}
+                                    className="btn btn-primary scanner-btn parent-action-btn"
+                                    style={{ height: '3rem', padding: '0 24px', minWidth: 'auto', fontSize: '1.1rem', margin: 0 }}
+                                >
+                                    {loading ? 'Processing...' : 'Submit'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleLogout}
+                                    className="btn btn-secondary logout-btn parent-action-btn"
+                                    style={{ height: '3rem', padding: '0 24px', fontSize: '1.1rem', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', margin: 0 }}
+                                >
+                                    Logout
+                                </button>
+                            </div>
                         </form>
-                        <button
-                            type="button"
-                            onClick={handleLogout}
-                            className="btn btn-secondary"
-                            style={{ height: '3rem', padding: '0 24px', fontSize: '1.1rem', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', margin: 0 }}
-                        >
-                            Logout
-                        </button>
                     </div>
                 </div>
             </header>
