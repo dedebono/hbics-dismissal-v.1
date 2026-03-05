@@ -15,7 +15,10 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     const websocketUrl = process.env.REACT_APP_WEBSOCKET_URL;
     console.log('Attempting to connect to WebSocket at:', websocketUrl);
-    const newSocket = io(websocketUrl);
+    const newSocket = io(websocketUrl, {
+      transports: ['websocket'], // Force WebSocket instead of XHR polling
+      upgrade: false,
+    });
     setSocket(newSocket);
 
     newSocket.on('connect', () => {
