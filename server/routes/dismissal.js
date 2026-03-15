@@ -36,8 +36,16 @@ router.post('/check-in', authenticateToken, (req, res) => {
       // Broadcast the new active students list (scoped)
       Dismissal.getActiveStudents(school_id, (err, activeStudents) => {
         if (!err) {
-          broadcast({ type: 'active_students', payload: activeStudents });
+          broadcast('active_students', { type: 'active_students', payload: activeStudents });
         }
+      });
+      // Emit individual event for real-time appendum
+      broadcast('student_checked_in', {
+        id: student.id,
+        name: student.name,
+        class: student.class,
+        barcode: student.barcode,
+        checked_in_at: result.timestamp
       });
 
       res.json({
@@ -84,9 +92,11 @@ router.post('/check-out', authenticateToken, (req, res) => {
       // Broadcast the updated active students list (scoped)
       Dismissal.getActiveStudents(school_id, (err, activeStudents) => {
         if (!err) {
-          broadcast({ type: 'active_students', payload: activeStudents });
+          broadcast('active_students', { type: 'active_students', payload: activeStudents });
         }
       });
+      // Emit individual event for real-time checkouts
+      broadcast('student_checked_out', { barcode: student.barcode });
 
       res.json({
         message: 'Student checked out successfully',
@@ -169,7 +179,7 @@ router.delete('/active/clear', authenticateToken, (req, res) => {
       return res.status(500).json({ message: 'Error clearing active students' });
     }
 
-    broadcast({ type: 'active_students', payload: [] });
+    broadcast('active_students', { type: 'active_students', payload: [] });
 
     res.json({
       message: `Cleared ${result.cleared} active students`,
@@ -194,7 +204,7 @@ router.delete('/active/:studentId', authenticateToken, (req, res) => {
 
     Dismissal.getActiveStudents(school_id, (err, activeStudents) => {
       if (!err) {
-        broadcast({ type: 'active_students', payload: activeStudents });
+        broadcast('active_students', { type: 'active_students', payload: activeStudents });
       }
     });
 
@@ -270,7 +280,7 @@ router.post('/arrival', authenticateToken, (req, res) => {
 
       Dismissal.getTodayArrivals(school_id, (err, arrivals) => {
         if (!err) {
-          broadcast({ type: 'today_arrivals', payload: arrivals });
+          broadcast('today_arrivals', { type: 'today_arrivals', payload: arrivals });
         }
       });
 

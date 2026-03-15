@@ -12,6 +12,7 @@ const StudentDashboard = () => {
 
   const [barcode, setBarcode] = useState('');
   const [activeStudents, setActiveStudents] = useState([]);
+  const [checkoutStudents, setCheckoutStudents] = useState([]); // NEW: check-out students
   const [allStudentsMap, setAllStudentsMap] = useState({}); // barcode -> master student
   const [loading, setLoading] = useState(false);
   const barcodeInputRef = useRef(null);
@@ -104,10 +105,17 @@ const StudentDashboard = () => {
     loadAll();
     const interval = setInterval(loadAll, 5000);
 
+    // NEW: interval to clean up check-out students after 2 minutes
+    const checkoutCleanupInterval = setInterval(() => {
+      const now = Date.now();
+      setCheckoutStudents((prev) => prev.filter((s) => now - s.checkoutDisplayTime < 120000));
+    }, 5000);
+
     return () => {
       isMounted = false;
       clearInterval(tick);
       clearInterval(interval);
+      clearInterval(checkoutCleanupInterval);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
@@ -132,15 +140,14 @@ const StudentDashboard = () => {
       preload.src = student.photo_url;
     }
 
-Swal.fire({
-  title: 'Checked in',
-  html: `
+    Swal.fire({
+      title: 'Checked in',
+      html: `
     <div class="checkin-wrap">
       <div class="checkin-avatar" style="background:${colorFromString(student.name || student.class || '')}">
-        ${
-          student.photo_url
-            ? `<img src="${student.photo_url}" alt="${student.name}" />`
-            : `<span class="checkin-initials">${getInitials(student.name)}</span>`
+        ${student.photo_url
+          ? `<img src="${student.photo_url}" alt="${student.name}" />`
+          : `<span class="checkin-initials">${getInitials(student.name)}</span>`
         }
       </div>
 
@@ -151,30 +158,30 @@ Swal.fire({
       </div>
     </div>
   `,
-  position: 'center',
-  showConfirmButton: false,
-  timer: 5000,
-  timerProgressBar: true,
-  backdrop: `
+      position: 'center',
+      showConfirmButton: false,
+      timer: 5000,
+      timerProgressBar: true,
+      backdrop: `
     rgba(0,0,0,0.45)
     left top
     no-repeat
   `,
-  customClass: {
-    popup: 'swal-checkin-popup',
-    title: 'swal-checkin-title',
-    htmlContainer: 'swal-checkin-html',
-  },
-  didOpen: () => {
-    // Preload image (already done above, but safe here too)
-  },
-  showClass: {
-    popup: 'swal-checkin-animate-in'
-  },
-  hideClass: {
-    popup: 'swal-checkin-animate-out'
-  }
-});
+      customClass: {
+        popup: 'swal-checkin-popup',
+        title: 'swal-checkin-title',
+        htmlContainer: 'swal-checkin-html',
+      },
+      didOpen: () => {
+        // Preload image (already done above, but safe here too)
+      },
+      showClass: {
+        popup: 'swal-checkin-animate-in'
+      },
+      hideClass: {
+        popup: 'swal-checkin-animate-out'
+      }
+    });
 
     barcodeInputRef.current?.focus();
   }, []);
@@ -258,6 +265,14 @@ Swal.fire({
 
     const onCheckedOut = ({ barcode }) => {
       setActiveStudents((prev) => {
+        const studentToCheckout = prev.find((s) => s.barcode === barcode);
+        if (studentToCheckout) {
+          setCheckoutStudents((coPrev) => {
+            if (coPrev.some((s) => s.barcode === barcode)) return coPrev;
+            return [{ ...studentToCheckout, checkoutDisplayTime: Date.now() }, ...coPrev];
+          });
+        }
+
         const next = prev.filter((s) => s.barcode !== barcode);
         if (currentlyPlaying === barcode && audioRef.current) {
           audioRef.current.pause();
@@ -416,7 +431,7 @@ Swal.fire({
 
           {/* NEW: Class filter (seamless) */}
           <div className="filter-bar">
-            <label htmlFor="classFilter" style={{color:'white', padding:'10px', fontSize:'1.2rem' ,}}>Filter by class: </label>
+            <label htmlFor="classFilter" style={{ color: 'white', padding: '10px', fontSize: '1.2rem', }}>Filter by class: </label>
             <select
               id="classFilter"
               className="filter-select"
@@ -503,6 +518,45 @@ Swal.fire({
             </div>
           )}
         </div>
+
+        {checkoutStudents.length > 0 && (
+          <div className="checkout-section">
+            <div className="section-header">
+              <h2
+                style={{
+                  display: 'flex',
+                }}
+              >Recently Checked Out ({checkoutStudents.length})</h2>
+            </div>
+            <div className="students-grid checkout-grid">
+              {checkoutStudents.map((student) => (
+                <div key={student.barcode} className="student-card checkout-student-card">
+                  {student.photo_url && (
+                    <div className="student-photo-container checkout-photo-container">
+                      <img
+                        src={student.photo_url}
+                        alt={student.name}
+                        className="student-photo"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="student-info checkout-info">
+                    <h3 title={student.name}>{truncateName(student.name, 2, '')}</h3>
+                    <div className="info-row checkout-info-row">
+                      <p className="student-class checkout-class">{student.class}</p>
+                      <p className="student-time checkout-time">
+                        {moment(student.checkoutDisplayTime).format('hh:mm A')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       <footer className="student-footer">

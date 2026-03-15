@@ -45,6 +45,11 @@
   max-width: clamp(1200px, 96vw, 2400px);
   margin: 0 auto;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  /* limit total height to viewport remainder so flex proportions work */
+  height: calc(100vh - 120px);
 }
 
 /* Socket connection status dot */
@@ -133,9 +138,11 @@
   padding: 1rem;
   border-radius: 15px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
   display: flex;
   flex-direction: column;
+  flex: 9;
+  /* 90% of available space */
+  overflow-y: auto;
 }
 
 .section-header {
@@ -143,6 +150,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  flex-shrink: 0;
 }
 
 .section-header h2 {
@@ -173,6 +181,8 @@
 
   display: grid;
   gap: var(--gap);
+  align-content: start;
+  /* pack items to top so scroll works nicely */
 
   grid-template-columns: repeat(auto-fit,
       minmax(clamp(var(--card-min),
@@ -187,6 +197,7 @@
   text-align: center;
   padding: 1rem;
   margin-top: auto;
+  flex-shrink: 0;
 }
 
 .student-footer p {
@@ -198,6 +209,8 @@
 @media (max-width: 768px) {
   .student-main {
     padding: 1rem;
+    height: auto;
+    /* let it normally scroll on mobile */
   }
 
   .scanner-form {
@@ -438,4 +451,55 @@
   .students-grid {
     --base-cols: 7;
   }
+}
+
+/* Checked-out section styles */
+.checkout-section {
+  background: #667085;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  /* 10% of available space */
+  overflow-y: auto;
+}
+
+.checkout-section .section-header {
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+
+.checkout-section .section-header h2 {
+  color: #fff;
+  font-size: 1rem;
+  margin: 0;
+}
+
+
+/* Color overrides for checkout items */
+.checkout-student-card {
+  background: #ffebee !important;
+}
+
+.checkout-student-card:hover {
+  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.15) !important;
+}
+
+.checkout-photo-container {
+  border-color: #ffcdd2 !important;
+}
+
+.checkout-info h3 {
+  color: #143258 !important;
+}
+
+.checkout-class {
+  background: #ffebee !important;
+  color: #143258 !important;
+}
+
+.checkout-time {
+  color: #ffae00 !important;
 }

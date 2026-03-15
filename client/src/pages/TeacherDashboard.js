@@ -138,7 +138,7 @@ const TeacherDashboard = () => {
   }, [])
 
   const handleStudentCheckedOut = useCallback(
-    (barcodeToOut) => {
+    ({ barcode: barcodeToOut }) => {
       setActiveStudents((prev) => {
         const updated = prev.filter((s) => s.barcode !== barcodeToOut)
         if (currentlyPlaying === barcodeToOut) {
