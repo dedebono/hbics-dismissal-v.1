@@ -1,5 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
+const School = require('../models/School');
 const { generateToken, authenticateToken, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 const { initDatabase } = require('../config/database');
 
@@ -72,23 +73,50 @@ router.post('/login', (req, res) => {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      const token = generateToken({
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        school_id: user.school_id || null
-      });
+      if (user.school_id) {
+        School.findById(user.school_id, (err, school) => {
+          const schoolName = school?.name || null;
+          const token = generateToken({
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            school_id: user.school_id || null,
+            school_name: schoolName
+          });
 
-      res.json({
-        message: 'Login successful',
-        token,
-        user: {
+          res.json({
+            message: 'Login successful',
+            token,
+            user: {
+              id: user.id,
+              username: user.username,
+              role: user.role,
+              school_id: user.school_id || null,
+              school_name: schoolName
+            }
+          });
+        });
+      } else {
+        const token = generateToken({
           id: user.id,
           username: user.username,
           role: user.role,
-          school_id: user.school_id || null
-        }
-      });
+          school_id: user.school_id || null,
+          school_name: null
+        });
+
+        res.json({
+          message: 'Login successful',
+          token,
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            school_id: user.school_id || null,
+            school_name: null
+          }
+        });
+      }
     });
   });
 });

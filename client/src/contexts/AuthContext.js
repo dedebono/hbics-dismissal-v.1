@@ -26,6 +26,7 @@ export const AuthProvider = ({ children }) => {
             username: payload.username,
             role: payload.role,
             school_id: payload.school_id || null,
+            school_name: payload.school_name || null,
           });
         } catch (error) {
           logout();

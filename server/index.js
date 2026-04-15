@@ -2,9 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const http = require('http');
-const { createWebSocketServer } = require('./websocket');
 require('dotenv').config();
 
+const { createWebSocketServer } = require('./websocket');
 const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/students');
 const dismissalRoutes = require('./routes/dismissal');

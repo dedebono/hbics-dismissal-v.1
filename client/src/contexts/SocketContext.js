@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import io from 'socket.io-client';
+import { useAuth } from './AuthContext';
 
 const SocketContext = createContext();
 
@@ -9,22 +10,35 @@ export const useSocket = () => {
 };
 
 export const SocketProvider = ({ children }) => {
+  const { token, loading } = useAuth();
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
+    if (loading || !token) {
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+        setIsConnected(false);
+      }
+      return;
+    }
+
     const websocketUrl = process.env.REACT_APP_WEBSOCKET_URL || window.location.origin.replace(/^http/, 'ws');
-    console.log('Attempting to connect to WebSocket at:', websocketUrl);
+    console.log('Attempting to connect to WebSocket. Token:', token ? token.substring(0, 50) + '...' : 'none');
 
     const newSocket = io(websocketUrl, {
-      transports: ['websocket', 'polling'], // Allow fallback to polling
-      upgrade: true, // Allow upgrade from polling to WS
+      transports: ['websocket', 'polling'],
+      upgrade: true,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
       autoConnect: true,
+      auth: {
+        token: token
+      }
     });
 
     setSocket(newSocket);
@@ -32,7 +46,6 @@ export const SocketProvider = ({ children }) => {
     newSocket.on('connect', () => {
       setIsConnected(true);
       console.log('WebSocket connected!');
-      // Request initial data sync
       newSocket.emit('request_active_students');
     });
 
@@ -50,7 +63,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+      console.error('WebSocket connection error:', error.message);
     });
 
     return () => {
@@ -62,7 +75,7 @@ export const SocketProvider = ({ children }) => {
       newSocket.close();
       console.log('WebSocket cleanup.');
     };
-  }, []);
+  }, [token, loading]);
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

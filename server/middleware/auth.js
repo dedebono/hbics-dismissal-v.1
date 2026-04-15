@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -45,14 +46,15 @@ const requireTeacherOrAdmin = (req, res, next) => {
   next();
 };
 
-// Generate JWT token (includes school_id)
+// Generate JWT token (includes school_id and school_name)
 const generateToken = (user) => {
   return jwt.sign(
     {
       id: user.id,
       username: user.username,
       role: user.role,
-      school_id: user.school_id || null
+      school_id: user.school_id || null,
+      school_name: user.school_name || null
     },
     JWT_SECRET,
     { expiresIn: '8h' }

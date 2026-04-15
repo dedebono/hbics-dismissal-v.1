@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../contexts/SocketContext';
+import { useAuth } from '../contexts/AuthContext';
 import { studentsAPI, dismissalAPI } from '../services/api';
 import Swal from 'sweetalert2';
 import './StudentDashboard.css';
@@ -9,6 +10,8 @@ import moment from 'moment-timezone';
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { socket, isConnected } = useSocket();
+  const { user } = useAuth();
+  const schoolName = user?.school_name;
 
   const [barcode, setBarcode] = useState('');
   const [activeStudents, setActiveStudents] = useState([]);
@@ -425,7 +428,7 @@ const StudentDashboard = () => {
       <header className="student-header">
         <div className="header-content">
           <div>
-            <h2>Student Dismissal ({currentTime} WITA)</h2>
+            <h2>Student Dismissal {schoolName && `- ${schoolName}`} ({currentTime} WITA)</h2>
             <h3>Active Students ({visibleStudents.length}{selectedClass !== 'ALL' ? ` / ${activeStudents.length}` : ''})</h3>
           </div>
 
