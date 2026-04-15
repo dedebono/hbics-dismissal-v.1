@@ -563,7 +563,7 @@ const StudentDashboard = () => {
       </main>
 
       <footer className="student-footer">
-        <p>HBICS Dismissal System v1.0 | &copy; 2025 </p>
+        <p>HBICS Dismissal System v1.1 | &copy; 2025 </p>
       </footer>
 
       <audio ref={audioRef} onEnded={handleAudioEnded} />
