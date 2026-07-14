@@ -110,14 +110,17 @@ class Dismissal {
   }
 
   // Get today's arrivals (scoped to school)
+  // UI reset behavior: after reset, hide arrivals until the next "local (+8 hours) day".
   static getTodayArrivals(school_id, callback) {
     const sql = `
       SELECT dl.id as log_id, dl.timestamp as checked_in_at, s.id, s.name, s.class, s.barcode
       FROM dismissal_logs dl
       INNER JOIN students s ON dl.student_id = s.id
-      WHERE dl.school_id = ? 
-        AND dl.action = 'arrival' 
+      LEFT JOIN arrival_display_resets r ON r.school_id = dl.school_id
+      WHERE dl.school_id = ?
+        AND dl.action = 'arrival'
         AND DATE(dl.timestamp, '+8 hours') = DATE('now', '+8 hours')
+        AND datetime(dl.timestamp, '+8 hours') >= COALESCE(r.reset_at, '1970-01-01')
       ORDER BY dl.timestamp DESC
     `;
     db.all(sql, [school_id], (err, rows) => {
@@ -184,13 +187,14 @@ class Dismissal {
     });
   }
 
-  // Clear today's arrival logs for a school (scoped by local +8 hours date)
+  // "Reset" today's arrival list for a school:
+  // do NOT delete logs; only update a reset marker used by getTodayArrivals().
   static clearTodayArrivals(school_id, callback) {
     const sql = `
-      DELETE FROM dismissal_logs
-      WHERE school_id = ?
-        AND action = 'arrival'
-        AND DATE(timestamp, '+8 hours') = DATE('now', '+8 hours')
+      INSERT INTO arrival_display_resets (school_id, reset_at)
+      VALUES (?, datetime('now', '+8 hours'))
+      ON CONFLICT(school_id) DO UPDATE SET
+        reset_at = datetime('now', '+8 hours')
     `;
 
     db.run(sql, [school_id], function (err) {

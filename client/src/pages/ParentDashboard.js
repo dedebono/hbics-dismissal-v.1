@@ -181,10 +181,17 @@ const ParentDashboard = () => {
         if (!socket) return;
 
         const onFullSync = (data) => {
-            if (data?.type !== 'today_arrivals') return;
-            const list = data.payload || [];
+            // socket event is already 'today_arrivals', but backend payload may vary
+            const incomingType = data?.type;
+            if (incomingType && incomingType !== 'today_arrivals') return;
+
+            // Accept payload in common shapes
+            const list =
+                Array.isArray(data) ? data :
+                (Array.isArray(data?.payload) ? data.payload : []);
+
             const enriched = list.map((as) => {
-                const master = allStudentsMap[as.barcode] || {};
+                const master = allStudentsMap[as?.barcode] || {};
                 return {
                     ...as,
                     photo_url: as.photo_url ?? master.photo_url ?? null,
@@ -198,7 +205,7 @@ const ParentDashboard = () => {
 
             setActiveStudents((prev) => {
                 const prevSet = new Set(prev.map((p) => p.barcode));
-                const newOnes = enrichedSorted.filter((s) => !prevSet.has(s.barcode));
+                const newOnes = enrichedSorted.filter((s) => s.barcode && !prevSet.has(s.barcode));
                 newOnes.forEach((s) => showBigCheckin(s));
 
                 const withSound = newOnes.find((s) => s.sound_url);
