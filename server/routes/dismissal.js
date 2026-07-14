@@ -146,7 +146,9 @@ router.get('/today', authenticateToken, requireTeacherOrAdmin, (req, res) => {
   });
 });
 
-// Get today's arrivals (scoped to school)
+/**
+ * Get today's arrivals (scoped to school)
+ */
 router.get('/today-arrivals', authenticateToken, (req, res) => {
   const school_id = req.user.school_id;
   Dismissal.getTodayArrivals(school_id, (err, arrivals) => {
@@ -154,6 +156,30 @@ router.get('/today-arrivals', authenticateToken, (req, res) => {
       return res.status(500).json({ message: "Error fetching today's arrivals" });
     }
     res.json(arrivals);
+  });
+});
+
+/**
+ * Clear today's arrival logs (scoped to school)
+ * Used by ParentDashboard "reset arrival list" to remove only today's arrivals.
+ */
+router.delete('/today-arrivals/clear', authenticateToken, (req, res) => {
+  const school_id = req.user.school_id;
+
+  Dismissal.clearTodayArrivals(school_id, (err, result) => {
+    if (err) {
+      return res.status(500).json({ message: "Error clearing today's arrivals" });
+    }
+
+    broadcastToTenant(school_id, 'today_arrivals', {
+      type: 'today_arrivals',
+      payload: []
+    });
+
+    res.json({
+      message: `Cleared ${result.cleared} today's arrival logs`,
+      cleared: result.cleared
+    });
   });
 });
 

@@ -113,6 +113,8 @@ export const dismissalAPI = {
     api.get(`/dismissal/status/${barcode}`),
   recordArrival: (barcode) =>
     api.post('/dismissal/arrival', { barcode }),
+  clearTodayArrivals: () =>
+    api.delete('/dismissal/today-arrivals/clear'),
 };
 
 // Users API

@@ -290,6 +290,52 @@ const ParentDashboard = () => {
         navigate('/login');
     };
 
+    const handleResetTodayArrivals = async () => {
+        const result = await Swal.fire({
+            title: 'Reset arrivals?',
+            text: 'This will clear today’s arrival list for your school.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, reset',
+            cancelButtonText: 'Cancel',
+        });
+
+        if (!result.isConfirmed) return;
+
+        setLoading(true);
+        try {
+            await dismissalAPI.clearTodayArrivals();
+
+            // Stop any currently playing sound
+            audioRef.current?.pause();
+            setCurrentlyPlaying(null);
+
+            // Optimistically clear UI; backend broadcast will also sync
+            setActiveStudents([]);
+            setSelectedClass('ALL');
+
+            Swal.fire({
+                title: 'Arrivals reset',
+                text: 'Today’s arrival list was cleared.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } catch (err) {
+            console.error('Reset arrivals failed:', err);
+            Swal.fire({
+                title: 'Reset failed',
+                text: err.response?.data?.message || 'Could not clear today arrivals.',
+                icon: 'error',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        } finally {
+            setLoading(false);
+            barcodeInputRef.current?.focus();
+        }
+    };
+
     const handleBarcodeSubmit = async (e) => {
         e.preventDefault();
         if (!barcode.trim()) return;
@@ -413,6 +459,16 @@ const ParentDashboard = () => {
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={handleResetTodayArrivals}
+                                    disabled={loading}
+                                    className="btn btn-warning reset-arrivals-btn parent-action-btn"
+                                    style={{ height: '3rem', padding: '0 24px', fontSize: '1.1rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '5px', margin: 0 }}
+                                >
+                                    Reset Arrivals
+                                </button>
+
+                                <button
+                                    type="button"
                                     onClick={handleLogout}
                                     className="btn btn-secondary logout-btn parent-action-btn"
                                     style={{ height: '3rem', padding: '0 24px', fontSize: '1.1rem', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', margin: 0 }}
@@ -482,7 +538,7 @@ const ParentDashboard = () => {
             </main>
 
             <footer className="student-footer">
-                <p>HBICS Dismissal System v1.0 | &copy; 2025 </p>
+                <p>HBICS Dismissal System v1.0 | &copy; 2026 </p>
             </footer>
 
             <audio ref={audioRef} onEnded={handleAudioEnded} />

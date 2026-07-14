@@ -183,6 +183,21 @@ class Dismissal {
       callback(null, { cleared: this.changes > 0 });
     });
   }
+
+  // Clear today's arrival logs for a school (scoped by local +8 hours date)
+  static clearTodayArrivals(school_id, callback) {
+    const sql = `
+      DELETE FROM dismissal_logs
+      WHERE school_id = ?
+        AND action = 'arrival'
+        AND DATE(timestamp, '+8 hours') = DATE('now', '+8 hours')
+    `;
+
+    db.run(sql, [school_id], function (err) {
+      if (err) return callback(err);
+      callback(null, { cleared: this.changes });
+    });
+  }
 }
 
 module.exports = Dismissal;
