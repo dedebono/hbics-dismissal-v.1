@@ -10,7 +10,7 @@ import moment from 'moment-timezone';
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { socket, isConnected } = useSocket();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const schoolName = user?.school_name;
 
   const [barcode, setBarcode] = useState('');
@@ -352,6 +352,17 @@ const StudentDashboard = () => {
 
   const handleAudioEnded = () => setCurrentlyPlaying(null);
 
+  const handleLogout = () => {
+    try {
+      audioRef.current?.pause();
+      if (audioRef.current) audioRef.current.src = '';
+    } catch (e) {
+      // ignore audio cleanup errors
+    }
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   const handleBarcodeSubmit = async (e) => {
     e.preventDefault();
     if (!barcode.trim()) return;
@@ -432,19 +443,29 @@ const StudentDashboard = () => {
             <h3>Active Students ({visibleStudents.length}{selectedClass !== 'ALL' ? ` / ${activeStudents.length}` : ''})</h3>
           </div>
 
-          {/* NEW: Class filter (seamless) */}
-          <div className="filter-bar">
-            <label htmlFor="classFilter" style={{ color: 'white', padding: '10px', fontSize: '1.2rem', }}>Filter by class: </label>
-            <select
-              id="classFilter"
-              className="filter-select"
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-            >
-              {classOptions.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            {/* NEW: Class filter (seamless) */}
+            <div className="filter-bar" style={{ flex: 1 }}>
+              <label
+                htmlFor="classFilter"
+                style={{ color: 'white', padding: '10px', fontSize: '1.2rem' }}
+              >
+                Filter by class:
+              </label>
+              <select
+                id="classFilter"
+                className="filter-select"
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+              >
+                {classOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
           </div>
 
           <form onSubmit={handleBarcodeSubmit} className="scanner-form">
@@ -466,6 +487,15 @@ const StudentDashboard = () => {
               className="btn btn-primary scanner-btn"
             >
               {loading ? 'Processing...' : 'Submit'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="btn btn-secondary"
+              style={{ marginLeft: 12 }}
+            >
+              Logout
             </button>
           </form>
         </div>
