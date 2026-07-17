@@ -912,6 +912,7 @@ const AdminDashboard = () => {
                     <option value="student">Student</option>
                     <option value="admin">Admin</option>
                     <option value="parents">Parents</option>
+                    <option value="educs">Educs</option>
                   </select>
                 </div>
               </div>
