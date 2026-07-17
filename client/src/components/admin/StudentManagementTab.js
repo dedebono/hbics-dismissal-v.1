@@ -14,6 +14,8 @@ const StudentManagementTab = ({
   handleDeleteStudent,
   handleAdminCheckIn,
   checkingInId,
+  handleArrive,
+  arrivingId,
 }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -128,6 +130,17 @@ const StudentManagementTab = ({
                       >
                         {isActive ? '✔️' : checkingInId === student.id ? 'Checking in...' : 'Check-in'}
                       </button>
+                      {handleArrive && (
+                        <button
+                          onClick={() => handleArrive(student)}
+                          className="btn btn-primary btn-sm"
+                          style={{fontSize:'1.2rem', padding:'2px 8px', fontWeight:'bold', backgroundColor: '#3b82f6', color: 'white', border: 'none'}}
+                          disabled={arrivingId === student.id}
+                          title="Record arrival"
+                        >
+                          {arrivingId === student.id ? 'Arriving...' : 'Arrive'}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

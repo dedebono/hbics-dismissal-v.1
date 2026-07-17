@@ -11,6 +11,7 @@ const EducsDashboard = () => {
   const [activeStudents, setActiveStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [checkingInId, setCheckingInId] = useState(null);
+  const [arrivingId, setArrivingId] = useState(null);
 
   useEffect(() => {
     fetchStudents();
@@ -74,6 +75,26 @@ const EducsDashboard = () => {
     }
   };
 
+  const handleArrive = async (student) => {
+    if (!student?.barcode) {
+      toast.error('Student barcode not found');
+      return;
+    }
+    setArrivingId(student.id);
+    try {
+      await dismissalAPI.recordArrival(student.barcode);
+      toast.success(`Arrival recorded: ${student.name}`);
+      await fetchActiveStudents();
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        'Error recording arrival';
+      toast.error(msg);
+    } finally {
+      setArrivingId(null);
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
@@ -99,6 +120,8 @@ const EducsDashboard = () => {
           handleDeleteStudent={() => {}}
           handleAdminCheckIn={handleAdminCheckIn}
           checkingInId={checkingInId}
+          handleArrive={handleArrive}
+          arrivingId={arrivingId}
         />
       </main>
     </div>
